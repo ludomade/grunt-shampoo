@@ -1,0 +1,42 @@
+{
+  "name": "grunt-shampoo",
+  "description": "Integrate with Shampoo CMS.",
+  "version": "0.0.1",
+  "homepage": "https://github.com/soapcreative/grunt-shampoo",
+  "author": {
+    "name": "Mike Chang",
+    "email": "chang@soapcreative.com",
+    "url": "http://soapcreative.com/us"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/soapcreative/grunt-shampoo"
+  },
+  "bugs": {
+    "url": "https://github.com/soapcreative/grunt-shampoo/issues"
+  },
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "https://github.com/soapcreative/grunt-shampoo/blob/master/LICENSE-MIT"
+    }
+  ],
+  "engines": {
+    "node": ">= 0.8.0"
+  },
+  "scripts": {
+    "test": "grunt test"
+  },
+  "devDependencies": {
+    "grunt-contrib-jshint": "^0.9.2",
+    "grunt-contrib-clean": "^0.5.0",
+    "grunt-contrib-nodeunit": "^0.3.3",
+    "grunt": "~0.4.5"
+  },
+  "peerDependencies": {
+    "grunt": "~0.4.5"
+  },
+  "keywords": [
+    "gruntplugin"
+  ]
+}
