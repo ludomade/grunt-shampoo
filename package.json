@@ -1,6 +1,6 @@
 {
   "name": "grunt-shampoo",
-  "description": "Integrate with Shampoo CMS.",
+  "description": "Retrieve content from the Shampoo CMS API on shampoo.io.",
   "version": "0.0.1",
   "homepage": "https://github.com/soapcreative/grunt-shampoo",
   "author": {
@@ -36,7 +36,14 @@
   "peerDependencies": {
     "grunt": "~0.4.5"
   },
+  "dependencies": {
+    "request": "~2.37.0",
+    "async": "~0.9.0",
+    "sha256": "~0.1.1"
+  },
   "keywords": [
-    "gruntplugin"
+    "gruntplugin",
+    "shampoo",
+    "cms"
   ]
 }

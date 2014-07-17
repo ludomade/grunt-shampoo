@@ -8,43 +8,83 @@
 
 'use strict';
 
+var request = require("request"),
+    async = require("async"),
+    sha256 = require("sha256");
+
 module.exports = function(grunt) {
+  grunt.registerMultiTask( "shampoo", "Retrieve content from the Shampoo CMS API on shampoo.io.", function() {
 
-  // Please see the Grunt documentation for more information regarding task
-  // creation: http://gruntjs.com/creating-tasks
-
-  grunt.registerMultiTask('shampoo', 'Integrate with Shampoo CMS.', function() {
-    // Merge task-specific and/or target-specific options with these defaults.
     var options = this.options({
-      punctuation: '.',
-      separator: ', '
+      ignoreErrors: false,
+      api: 1,
+      format: "json",
+      type: "dump",
+      query: "single-file",
+      out: "data/content.json"
     });
 
-    // Iterate over all specified file groups.
-    this.files.forEach(function(f) {
-      // Concat specified files.
-      var src = f.src.filter(function(filepath) {
-        // Warn on and remove invalid source files (if nonull was set).
-        if (!grunt.file.exists(filepath)) {
-          grunt.log.warn('Source file "' + filepath + '" not found.');
-          return false;
-        } else {
-          return true;
-        }
-      }).map(function(filepath) {
-        // Read file source.
-        return grunt.file.read(filepath);
-      }).join(grunt.util.normalizelf(options.separator));
+    var done = this.async();
 
-      // Handle options.
-      src += options.punctuation;
+    var invalids = [];
 
-      // Write the destination file.
-      grunt.file.write(f.dest, src);
+    if (!options.domain) {
+      invalids.push("domain");
+    }
 
-      // Print a success message.
-      grunt.log.writeln('File "' + f.dest + '" created.');
+    if (!options.format) {
+      invalids.push("format");
+    }
+
+    if (!options.type) {
+      invalids.push("type");
+    }
+
+    if (!options.query) {
+      invalids.push("query");
+    }
+
+    if (!options.out) {
+      invalids.push("out");
+    }
+
+    if (!options.key || !options.secret) {
+      grunt.log.error( "API Key and Secret required. Get them from your Shampoo account under 'Settings'.");
+    }
+
+    if (invalids.length > 0) {
+      grunt.log.error('grunt-shampoo is missing following options:', invalids.join(', '));
+      return false;
+    }
+
+    var requestId = (new Date()).getTime() + "" + Math.floor(Math.random()*10000000);
+    var token = sha256( options.secret + options.key + requestId );
+
+    var url = "http://" + options.domain + ".shampoo.io/api/v" + options.api + "/" + options.type + "/" + options.format + "/" + options.query + "?token=" + token + "&requestId=" + requestId;
+
+    request(url, function( error, response, body ) {
+      response = response || { statusCode: 0 };
+      body = JSON.parse( body );
+      if( body.error ) {
+        grunt.log.error( "Error: " + body.message );
+        return done( body.message );
+      } else if (error) {
+        return done(error);
+      } else if ((response.statusCode < 200 || response.statusCode > 399)) {
+        return done(response.statusCode + " " + body);
+      }
+      
+      grunt.log.ok(response.statusCode);
+
+      if(options.out) {
+        grunt.log.ok( "Content saved locally" );
+        grunt.file.write(options.out, JSON.stringify(body));
+      }
+
+      done();
+
     });
+
   });
-
+  
 };

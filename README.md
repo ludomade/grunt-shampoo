@@ -1,6 +1,6 @@
 # grunt-shampoo
 
-> Integrate with Shampoo CMS.
+> Retrieve content from the Shampoo CMS API on shampoo.io.
 
 ## Getting Started
 This plugin requires Grunt `~0.4.5`
@@ -26,64 +26,123 @@ In your project's Gruntfile, add a section named `shampoo` to the data object pa
 grunt.initConfig({
   shampoo: {
     options: {
-      // Task-specific options go here.
+      domain: "yourdomain",
+      type: "dump",
+      format: "json",
+      key: "yourapikey",
+      secret: "yourapisecret"
     },
-    your_target: {
-      // Target-specific file lists and/or options go here.
-    },
+    en: {
+      options: {
+        query: "locale/en",
+        out: "app/content/en.json"
+      }
+    }
   },
 });
 ```
 
 ### Options
 
-#### options.separator
+#### options.domain
 Type: `String`
-Default value: `',  '`
+Default value: none
+Required
 
-A string value that is used to do something with whatever.
+The domain name of your Shampoo.io site. If your Shampoo installation is `http://soap.shampoo.io`, then you would enter in `soap` here.
 
-#### options.punctuation
+#### options.out
 Type: `String`
-Default value: `'.'`
+Default value: none
+Required
 
-A string value that is used to do something else with whatever else.
+The path of the output file to save the API response to. Be sure the file extention matches with the format.
+
+```
+out: "data/content.json"
+```
+
+#### options.api
+Type: `Number`
+Default value: `1`
+Required
+
+The version of the API to access.
+
+#### options.type
+Type: `String`
+Default value: `dump`
+
+The type of API call you would like to make. `dump` is set by default - content dumps are useful for pulling down content from Shampoo in one go.
+
+Possible types are: `dump`, `page`, `pages`, `models`, `model`, `locales` and `locale`.
+
+#### options.format
+Type: `String`
+Default value: `json`
+
+The format of the content output. 
+
+Possible types are: `json` and `zip`.
+
+#### options.key
+Type: `String`
+Default value: none
+Required
+
+An API key is required to access the Shampoo API. You must be an administrator and you can generate a new key and secret at `http://yourdomain.shampoo.io/settings`.
+
+#### options.secret
+Type: `String`
+Default value: none
+Required
+
+An API secret is required to access Shampoo API. You must be an administrator and you can generate a new key and secret at `http://yourdomain.shampoo.io/settings`.
+
+#### options.query
+Type: `String`
+Default value: none
+
+The query parameter of the API call to make. Currently, this value is appended to the end of the API call and you may append the URL path and query parameters to this field.
+
+This value could be `single-file` or `single-file?meta=1`.
 
 ### Usage Examples
 
-#### Default Options
-In this example, the default options are used to do something with whatever. So if the `testing` file has the content `Testing` and the `123` file had the content `1 2 3`, the generated result would be `Testing, 1 2 3.`
-
-```js
-grunt.initConfig({
-  shampoo: {
-    options: {},
-    files: {
-      'dest/default_options': ['src/testing', 'src/123'],
-    },
-  },
-});
-```
-
-#### Custom Options
-In this example, custom options are used to do something else with whatever else. So if the `testing` file has the content `Testing` and the `123` file had the content `1 2 3`, the generated result in this case would be `Testing: 1 2 3 !!!`
+In this example, the common options are set with credentials and shared options. Individual tasks are set with custom options to retrieve content by locale.
 
 ```js
 grunt.initConfig({
   shampoo: {
     options: {
-      separator: ': ',
-      punctuation: ' !!!',
+      domain: "yourdomain",
+      type: "dump",
+      format: "json",
+      key: "yourapikey",
+      secret: "yourapisecret"
     },
-    files: {
-      'dest/default_options': ['src/testing', 'src/123'],
+    en: {
+      options: {
+        query: "locale/en",
+        out: "app/content/en.json"
+      }
     },
-  },
+    fr: {
+      options: {
+        query: "locale/fr",
+        out: "app/content/fr.json"
+      }
+    }
 });
 ```
 
+## About Shampoo
+
+Shampoo is a CMS developed by some folks at Soap Creative, hosted at http://shampoo.io. It is currently in active development.
+
 ## Contributing
-In lieu of a formal styleguide, take care to maintain the existing coding style. Add unit tests for any new or changed functionality. Lint and test your code using [Grunt](http://gruntjs.com/).
+
+If you are a user of Shampoo and use this plugin, please contribute and help keep the plugin up to date with the API.
 
 ## Release History
-_(Nothing yet)_
+_(Initial)_
