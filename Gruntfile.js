@@ -28,6 +28,28 @@ module.exports = function(grunt) {
 
     nodeunit: {
       tests: ['test/*_test.js']
+    },
+
+    shampoo: {
+      options: {
+        privateConfig: grunt.file.readJSON("./shampoo-config.json"),
+        domain: "dev.shampoo2.app",
+        type: "dump",
+        format: "json",
+        mediaOut: "app/images/"
+      },
+      en: {
+        options: {
+          query: "locale/en",
+          out: "app/content/en.json"
+        }
+      },
+      fr: {
+        options: {
+          query: "locale/fr",
+          out: "app/content/fr.json"
+        }
+      }
     }
 
   });

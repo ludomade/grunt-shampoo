@@ -17,6 +17,26 @@ Once the plugin has been installed, it may be enabled inside your Gruntfile with
 grunt.loadNpmTasks('grunt-shampoo');
 ```
 
+Next, create a file named 'shampoo-config.json', located in the same directory as the gruntfile utilizing the grunt shampoo task.
+It's important you ignore this file from your code repository, as it will contain sensitive information.
+The json file has the following format:
+
+```js
+{
+  "aws": {
+    "key" : "myAWSKeyHere",
+    "secret": "myAWSSecretHere",
+    "bucket": "myAwsBucketNameHere"
+  },
+  "shampoo": {
+    "key": "myShampooKeyHere",
+      "secret": "myShampooKeyHere"
+  }
+}
+
+note, the AWS items are only required if you've set the shampoo.options.
+```
+
 ## The "shampoo" task
 
 ### Overview
@@ -26,11 +46,11 @@ In your project's Gruntfile, add a section named `shampoo` to the data object pa
 grunt.initConfig({
   shampoo: {
     options: {
-      domain: "yourdomain",
+      privateConfig: grunt.file.readJSON("./shampoo-config.json"),
+      domain: "yourdomain.io",
       type: "dump",
       format: "json",
-      key: "yourapikey",
-      secret: "yourapisecret"
+      mediaOut: "app/images/"
     },
     en: {
       options: {
@@ -85,20 +105,6 @@ The format of the content output.
 
 Possible types are: `json` and `zip`.
 
-#### options.key
-Type: `String`
-Default value: none
-Required
-
-An API key is required to access the Shampoo API. You must be an administrator and you can generate a new key and secret at `http://yourdomain.shampoo.io/settings`.
-
-#### options.secret
-Type: `String`
-Default value: none
-Required
-
-An API secret is required to access Shampoo API. You must be an administrator and you can generate a new key and secret at `http://yourdomain.shampoo.io/settings`.
-
 #### options.query
 Type: `String`
 Default value: none
@@ -107,33 +113,41 @@ The query parameter of the API call to make. Currently, this value is appended t
 
 This value could be `single-file` or `single-file?meta=1`.
 
+#### options.mediaOut
+Type: `String`
+Default value: none
+
+If you'd like to save down all of the media data that's been uploaded to AWS S3, specify a directory relative to the Gruntfile.js, which determines where the media is saved.  Note, this is done in a smart way, where only images that have been update on S3 get downloaded.  Not every image/asset is downloaded every time.
+
+Keep in mind, valid AWS S3 credentials are required in your shampoo-config.json file.    
+
+
 ### Usage Examples
 
 In this example, the common options are set with credentials and shared options. Individual tasks are set with custom options to retrieve content by locale.
 
 ```js
-grunt.initConfig({
-  shampoo: {
-    options: {
-      domain: "yourdomain",
-      type: "dump",
-      format: "json",
-      key: "yourapikey",
-      secret: "yourapisecret"
-    },
-    en: {
+shampoo: {
       options: {
-        query: "locale/en",
-        out: "app/content/en.json"
-      }
-    },
-    fr: {
-      options: {
-        query: "locale/fr",
-        out: "app/content/fr.json"
+        privateConfig: grunt.file.readJSON("./shampoo-config.json"),
+        domain: "dev.shampoo2.app",
+        type: "dump",
+        format: "json",
+        mediaOut: "app/images/"
+      },
+      en: {
+        options: {
+          query: "locale/en",
+          out: "app/content/en.json"
+        }
+      },
+      fr: {
+        options: {
+          query: "locale/fr",
+          out: "app/content/fr.json"
+        }
       }
     }
-});
 ```
 
 ## About Shampoo
