@@ -28,6 +28,24 @@ module.exports = function(grunt) {
 
     nodeunit: {
       tests: ['test/*_test.js']
+    },
+
+    shampoo: {
+      options: {
+        mediaOut: "app/images"
+      },
+      en: {
+        options: {
+          query: "dump/json/locale/en",
+          out: "content/en.json"
+        }
+      },
+      fr: {
+        options: {
+          query: "dump/json/locale/fr",
+          out: "content/fr.json"
+        }
+      }
     }
 
   });
