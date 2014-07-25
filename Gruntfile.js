@@ -32,6 +32,7 @@ module.exports = function(grunt) {
 
     shampoo: {
       options: {
+        domain: "dev.shampoo2.app",
         mediaOut: "app/images/",
         mediaCwd: "images/"
       },
@@ -41,10 +42,10 @@ module.exports = function(grunt) {
           out: "content/en.json"
         }
       },
-      fr: {
+      all: {
         options: {
-          query: "dump/json/locale/fr",
-          out: "content/fr.json"
+          query: "dump/zip/pages/locales",
+          zipOut: "content/"
         }
       }
     }
