@@ -14,7 +14,8 @@ var request = require("request"),
     fs = require("fs"),
     knox = require("knox"),
     deferred = require('underscore.deferred'),
-    crypto = require('crypto');
+    crypto = require('crypto'),
+    rc = require('rc');
 
 var client = null;
 
@@ -184,31 +185,23 @@ module.exports = function(grunt) {
 
     }
 
-    var options = this.options({
-      ignoreErrors: false,
+    // Mix in default options, .shampoorc file
+    var options = rc("shampoo", this.options({
       api: 1,
-      format: "json",
-      type: "dump",
-      query: "single-file",
-      out: "data/content.json",
-      mediaOut: "",
-      privateConfig: {}
-    });
+      query: "dump/json/single-file",
+      out: "data/content.json"
+    }));
 
     var done = this.async();
+
+    if (!options.key || !options.secret) {
+      grunt.log.error( "Shampoo API Key and Secret are required to use this plugin.\nGet them from your Shampoo account under 'Settings'.");
+    }
 
     var invalids = [];
 
     if (!options.domain) {
       invalids.push("domain");
-    }
-
-    if (!options.format) {
-      invalids.push("format");
-    }
-
-    if (!options.type) {
-      invalids.push("type");
     }
 
     if (!options.query) {
@@ -219,10 +212,6 @@ module.exports = function(grunt) {
       invalids.push("out");
     }
 
-    if (!options.privateConfig.shampoo.key || !options.privateConfig.shampoo.secret) {
-      grunt.log.error( "API Key and Secret required. Get them from your Shampoo account under 'Settings'.");
-    }
-
     if (invalids.length > 0) {
       grunt.log.error('grunt-shampoo is missing following options:', invalids.join(', '));
       return false;
@@ -231,7 +220,7 @@ module.exports = function(grunt) {
     var requestId = (new Date()).getTime() + "" + Math.floor(Math.random()*10000000);
     var token = sha256( options.secret + options.key + requestId );
 
-    var url = "http://" + options.domain + "/api/v" + options.api + "/" + options.type + "/" + options.format + "/" + options.query + "?token=" + token + "&requestId=" + requestId;
+    var url = "http://" + options.domain + "/api/v" + options.api + "/" + options.query + "?token=" + token + "&requestId=" + requestId;
     var mediaAssets = [];
 
     request(url, function( error, response, body ) {

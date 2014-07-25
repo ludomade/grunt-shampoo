@@ -32,22 +32,18 @@ module.exports = function(grunt) {
 
     shampoo: {
       options: {
-        privateConfig: grunt.file.readJSON("./shampoo-config.json"),
-        domain: "dev.shampoo2.app",
-        type: "dump",
-        format: "json",
-        mediaOut: "app/images/"
+        mediaOut: "app/images"
       },
       en: {
         options: {
-          query: "locale/en",
-          out: "app/content/en.json"
+          query: "dump/json/locale/en",
+          out: "content/en.json"
         }
       },
       fr: {
         options: {
-          query: "locale/fr",
-          out: "app/content/fr.json"
+          query: "dump/json/locale/fr",
+          out: "content/fr.json"
         }
       }
     }

@@ -1,6 +1,5 @@
 node_modules
 npm-debug.log
 tmp
-shampoo-config.json
-app/
 .DS_Store
+.shampoorc
