@@ -137,7 +137,7 @@ module.exports = function( grunt ) {
 
     function writeJsonFile(out, body) {
 
-      grunt.file.write(out, JSON.stringify(body));
+      grunt.file.write(out, JSON.stringify(body, null, '\t'));
 
     }
 
