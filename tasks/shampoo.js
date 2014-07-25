@@ -15,7 +15,8 @@ var request = require("request"),
     knox = require("knox"),
     deferred = require('underscore.deferred'),
     crypto = require('crypto'),
-    rc = require('rc');
+    rc = require('rc'),
+    DecompressZip = require('decompress-zip');
 
 var client = null;
 
@@ -59,6 +60,141 @@ module.exports = function( grunt ) {
       }
 
       return collection;
+
+    }
+
+    function requestJson(url, options, done) {
+
+      var mediaAssets = [];
+
+      request(url, function( error, response, body ) {
+        response = response || { statusCode: 0 };
+        body = JSON.parse( body );
+        if( body.error ) {
+          grunt.log.error( "Error: " + body.message );
+          return done( body.message );
+        } else if (error) {
+          return done( error );
+        } else if ((response.statusCode < 200 || response.statusCode > 399)) {
+          return done( "[" + response.statusCode + "] " + body );
+        }
+        
+        if( options.out ) {
+          if( options.mediaOut !== "" ) {
+
+            saveMedia(options, body, done);
+
+          } else {
+
+            writeJsonFile( options.out, body );
+            done();
+
+          }
+
+          grunt.log.ok( "Content saved locally." );
+
+        }
+      });
+
+    }
+
+    function requestZip(url, options, done) {
+
+      var zipFolderName = "content-backups";
+      var zipFileName = zipFolderName + "/content-dump-" + new Date().getTime() + ".zip";
+
+      if( options.zipOut.substring( options.zipOut.length - 1 ) !== "/" ) {
+        options.zipOut += "/";
+      }
+
+      //check to see if our zip folder exists.  If not, create it.
+      fs.exists( options.zipOut + zipFolderName, function( fileExists ) {
+
+        if ( !fileExists ) {
+          fs.mkdirSync(options.zipOut + zipFolderName);
+        }
+
+        //grab down the zip we're looking for and uncompress it
+        request(url, function() {
+          
+          var unzipper = new DecompressZip(options.zipOut + zipFileName);
+          
+          unzipper.on("extract", function (log) {
+            
+            //on extraction of the zip, check if mediaOut is set, if so, loop through all the unzipped files, and grab down the neccesary media.
+            if(options.mediaOut !== "") {
+
+              for(var key in log) {
+                var unzippedFile = options.zipOut + log[key].deflated;
+                var mediaAssets = [];
+                
+                fs.readFile( unzippedFile, function ( err, data ) {
+
+                  var body = JSON.parse(data);
+                  //override the out to match zipOut, as json files get written to options.out
+                  options.out = unzippedFile;
+                  saveMedia(options, body, done);
+
+                });
+
+              }
+
+            } else {
+              
+              done();
+
+            }
+
+          });
+
+          unzipper.on("error", function(error) {
+            console.log(error);
+            grunt.log.error("An error occurred unzipping the file:" + options.zipOut + zipFileName);
+          });
+
+          unzipper.extract({
+            path: options.zipOut
+          });
+
+        }).pipe(fs.createWriteStream(options.zipOut + zipFileName));
+
+      });
+
+    }
+
+    function saveMedia(options, body, done) {
+
+      var mediaAssets = [];
+
+      //if media doesn't end in "/", add it in.
+      if( options.mediaOut.substring( options.mediaOut.length - 1 ) !== "/" ) {
+        options.mediaOut += "/";
+      }
+
+      if( options.mediaCwd !== "" ) {
+        if ( options.mediaCwd.substring( options.mediaCwd.length - 1 ) !== "/" ) {
+            options.mediaCwd += "/";
+        }
+      } else {
+        options.mediaCwd = options.mediaOut;
+      }
+
+      client = makeClient( options.aws );
+      mediaAssets = getMediaAssets( body, mediaAssets, options.mediaCwd );
+
+      writeJsonFile( options.out, body );
+
+      var loadCounter = 0;
+      var next = function() {
+        loadCounter++;
+        if( loadCounter === mediaAssets.length ) {
+          done();
+        }
+      };
+
+      for( var key in mediaAssets ) {
+          verifyDownload( mediaAssets[key], options.mediaOut, next );
+      }
 
     }
 
@@ -157,7 +293,6 @@ module.exports = function( grunt ) {
         // can assume something went wrong.
         if (err || res.statusCode !== 200) {
           grunt.log.error("Error retrieving file: " + dest);
-          //return dfd.reject(makeError(MSG_ERR_DOWNLOAD, src, err || res.statusCode));
           doneCallback();
           return;
         }
@@ -167,7 +302,6 @@ module.exports = function( grunt ) {
             file.write(chunk);
           })
           .on('error', function (err) {
-            //return dfd.reject(makeError(MSG_ERR_DOWNLOAD, src, err));
             grunt.log.error("AWS error for file: " + dest);
             doneCallback();
             return;
@@ -186,6 +320,8 @@ module.exports = function( grunt ) {
       query: "dump/json/single-file",
       out: "data/content.json"
     }));
+
+    var doUnZip = false;
 
     var done = this.async();
 
@@ -207,6 +343,15 @@ module.exports = function( grunt ) {
       invalids.push("out");
     }
 
+    if(options.query.indexOf("dump/zip/") >= 0) {
+      doUnZip = true;
+
+      if(!options.zipOut) {
+        grunt.log.error("grunt-shampoo: you've specified a query which returns a zip file.  For this type of query please specify the zipOut option in the grunt task config.");
+        return false;
+      }
+    }
+
     if (invalids.length > 0) {
       grunt.log.error('grunt-shampoo is missing following options:', invalids.join(', '));
       return false;
@@ -224,64 +369,16 @@ module.exports = function( grunt ) {
     var token = sha256( options.secret + options.key + requestId );
 
     var url = "http://" + options.domain + "/api/v" + options.api + "/" + options.query + "?token=" + token + "&requestId=" + requestId;
-    var mediaAssets = [];
 
-    request(url, function( error, response, body ) {
-      response = response || { statusCode: 0 };
-      body = JSON.parse( body );
-      if( body.error ) {
-        grunt.log.error( "Error: " + body.message );
-        return done( body.message );
-      } else if (error) {
-        return done( error );
-      } else if ((response.statusCode < 200 || response.statusCode > 399)) {
-        return done( "[" + response.statusCode + "] " + body );
-      }
-      
-      if( options.out ) {
-        if( options.mediaOut !== "" ) {
+    if(doUnZip) {
 
-            //if media doesn't end in "/", add it in.
-            if( options.mediaOut.substring( options.mediaOut.length - 1 ) !== "/" ) {
-                options.mediaOut += "/";
-            }
+      requestZip(url, options, done);
 
-            if( options.mediaCwd !== "" ) {
-              if ( options.mediaCwd.substring( options.mediaCwd.length - 1 ) !== "/" ) {
-                  options.mediaCwd += "/";
-              }
-            } else {
-              options.mediaCwd = options.mediaOut;
-            }
+    } else {
 
-            client = makeClient( options.aws );
-            mediaAssets = getMediaAssets( body, mediaAssets, options.mediaCwd );
+      requestJson(url, options, done);
 
-            writeJsonFile( options.out, body );
+    }
 
-            var loadCounter = 0;
-            var next = function() {
-              loadCounter++;
-              if( loadCounter === mediaAssets.length ) {
-                done();
-              }
-            };
-
-            for( var key in mediaAssets ) {
-                var asset = mediaAssets[key];
-                verifyDownload( asset, options.mediaOut, next );
-            }
-
-        } else {
-
-          writeJsonFile( options.out, body );
-          done();
-
-        }
-
-        grunt.log.ok( "Content saved locally." );
-
-      }
-    });
   });
 };

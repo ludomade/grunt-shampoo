@@ -41,10 +41,10 @@ module.exports = function(grunt) {
           out: "content/en.json"
         }
       },
-      fr: {
+      all: {
         options: {
-          query: "dump/json/locale/fr",
-          out: "content/fr.json"
+          query: "dump/zip/pages/locales",
+          zipOut: "content/"
         }
       }
     }

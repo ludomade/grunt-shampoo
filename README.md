@@ -58,6 +58,12 @@ grunt.initConfig({
         query: "dump/json/locale/fr",
         out: "content/fr.json"
       }
+    },
+    allLocales: {
+      options: {
+        query: "dump/zip/pages/locales",
+        zipOut: "content/"
+      }
     }
   }
 });
@@ -120,6 +126,15 @@ Optional
 
 Specify relative media path to be output in JSON if different from `mediaOut`. E.g. If you download media files to `app/images/` but would like your image path in the JSON to be output as `images/`, you can specify so with this option.  
 
+#### options.zipOut
+Type: `String`
+Default value: none
+Optional
+
+Specify a relative path for which a collection of pages will be unzipped to.  Note, only API calls to shampoo with a query that begins with the string "/dump/zip/*" will utilize this parameter.  
+
+For backup purposes, for every successful call with the query of "/dump/zip/*", a zip file will be created in the subdirectory `{options.zipOut}/content-backups`.  The zip file has a filename standard of "content-dump-{UnixTimeStampHere}.zip".  The zip's contents are automatically unpacked to options.zipOut.
+
 ### Usage Examples
 
 In this example, the common options are set with credentials and shared options. Individual tasks are set with custom options to retrieve content by locale.
@@ -142,10 +157,15 @@ shampoo: {
       query: "dump/json/locale/fr",
       out: "app/content/fr.json"
     }
+  },
+  allLocales: {
+    options: {
+      query: "dump/zip/pages/locales",
+      zipOut: "content/"
+    }
   }
 }
 ```
-
 ## About Shampoo
 
 Shampoo is a CMS developed by some folks at Soap Creative, hosted on http://shampoo.io. It is currently in active development.
