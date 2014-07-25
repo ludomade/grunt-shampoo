@@ -82,36 +82,7 @@ module.exports = function( grunt ) {
         if( options.out ) {
           if( options.mediaOut !== "" ) {
 
-              //if media doesn't end in "/", add it in.
-              if( options.mediaOut.substring( options.mediaOut.length - 1 ) !== "/" ) {
-                  options.mediaOut += "/";
-              }
-
-              if( options.mediaCwd !== "" ) {
-                if ( options.mediaCwd.substring( options.mediaCwd.length - 1 ) !== "/" ) {
-                    options.mediaCwd += "/";
-                }
-              } else {
-                options.mediaCwd = options.mediaOut;
-              }
-
-              client = makeClient( options.aws );
-              mediaAssets = getMediaAssets( body, mediaAssets, options.mediaCwd );
-
-              writeJsonFile( options.out, body );
-
-              var loadCounter = 0;
-              var next = function() {
-                loadCounter++;
-                if( loadCounter === mediaAssets.length ) {
-                  done();
-                }
-              };
-
-              for( var key in mediaAssets ) {
-                  var asset = mediaAssets[key];
-                  verifyDownload( asset, options.mediaOut, next );
-              }
+            saveMedia(options, body, done);
 
           } else {
 
@@ -151,14 +122,33 @@ module.exports = function( grunt ) {
           unzipper.on("extract", function (log) {
             
             //on extraction of the zip, check if mediaOut is set, if so, loop through all the unzipped files, and grab down the neccesary media.
-            if(options.mediaOut == "") {
-              done();
+            if(options.mediaOut !== "") {
+
+              for(var key in log) {
+                var unzippedFile = options.zipOut + log[key].deflated;
+                var mediaAssets = [];
+                
+                fs.readFile( unzippedFile, function ( err, data ) {
+
+                  var body = JSON.parse(data);
+                  //override the out to match zipOut, as json files get written to options.out
+                  options.out = unzippedFile;
+                  saveMedia(options, body, done);
+
+                });
+
+              }
+
             } else {
+              
+              done();
 
             }
 
           });
-          unzipper.on("error", function() {
+
+          unzipper.on("error", function(error) {
+            console.log(error);
             grunt.log.error("An error occurred unzipping the file:" + options.zipOut + zipFileName);
           });
 
@@ -169,6 +159,42 @@ module.exports = function( grunt ) {
         }).pipe(fs.createWriteStream(options.zipOut + zipFileName));
 
       });
+
+    }
+
+    function saveMedia(options, body, done) {
+
+      var mediaAssets = [];
+
+      //if media doesn't end in "/", add it in.
+      if( options.mediaOut.substring( options.mediaOut.length - 1 ) !== "/" ) {
+        options.mediaOut += "/";
+      }
+
+      if( options.mediaCwd !== "" ) {
+        if ( options.mediaCwd.substring( options.mediaCwd.length - 1 ) !== "/" ) {
+            options.mediaCwd += "/";
+        }
+      } else {
+        options.mediaCwd = options.mediaOut;
+      }
+
+      client = makeClient( options.aws );
+      mediaAssets = getMediaAssets( body, mediaAssets, options.mediaCwd );
+
+      writeJsonFile( options.out, body );
+
+      var loadCounter = 0;
+      var next = function() {
+        loadCounter++;
+        if( loadCounter === mediaAssets.length ) {
+          done();
+        }
+      };
+
+      for( var key in mediaAssets ) {
+          verifyDownload( mediaAssets[key], options.mediaOut, next );
+      }
 
     }
 
