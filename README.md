@@ -17,25 +17,23 @@ Once the plugin has been installed, it may be enabled inside your Gruntfile with
 grunt.loadNpmTasks('grunt-shampoo');
 ```
 
-Next, create a file named 'shampoo-config.json', located in the same directory as the gruntfile utilizing the grunt shampoo task.
-It's important you ignore this file from your code repository, as it will contain sensitive information.
-The json file has the following format:
+Shampoo requires private credentials to access content. These can be stored either in the Gruntfile options, or 
+in a configuration file `.shampoorc` (recommended) and ignored from the GIT repository.
 
 ```js
 {
   "aws": {
     "key" : "myAWSKeyHere",
     "secret": "myAWSSecretHere",
-    "bucket": "myAwsBucketNameHere"
+    "bucket": "myAWSBucketNameHere"
   },
-  "shampoo": {
-    "key": "myShampooKeyHere",
-      "secret": "myShampooKeyHere"
-  }
+  "key": "myShampooKeyHere",
+  "secret": "myShampooSecretHere"
 }
 
-note, the AWS items are only required if you've set the shampoo.options.
 ```
+
+Note: The AWS items are only required if you've set the `shampoo.options.mediaOut` path.
 
 ## The "shampoo" task
 
@@ -46,19 +44,22 @@ In your project's Gruntfile, add a section named `shampoo` to the data object pa
 grunt.initConfig({
   shampoo: {
     options: {
-      privateConfig: grunt.file.readJSON("./shampoo-config.json"),
-      domain: "yourdomain.io",
-      type: "dump",
-      format: "json",
+      domain: "yourdomain.shampoo.io",
       mediaOut: "app/images/"
     },
     en: {
       options: {
-        query: "locale/en",
-        out: "app/content/en.json"
+        query: "dump/json/locale/en",
+        out: "content/en.json"
+      }
+    },
+    fr: {
+      options: {
+        query: "dump/json/locale/fr",
+        out: "content/fr.json"
       }
     }
-  },
+  }
 });
 ```
 
@@ -69,7 +70,28 @@ Type: `String`
 Default value: none
 Required
 
-The domain name of your Shampoo.io site. If your Shampoo installation is `http://soap.shampoo.io`, then you would enter in `soap` here.
+The full domain name of your `shampoo.io` site. If your Shampoo installation is `http://soap.shampoo.io`, then you would enter in `soap.shampoo.io` here.
+
+#### options.api
+Type: `Number`
+Default value: `1`
+Required
+
+The version of the API to access.
+
+#### options.query
+Type: `String`
+Default value: `dump/json/single-file`
+
+The full query of the API call. See Shampoo API documentation for all possible outputs.
+
+`dump` are content dumps useful for pulling down content from Shampoo in one go.
+
+Possible types for this segment are: `dump`, `page`, `pages`, `models`, `model`, `locales` and `locale`.
+
+For the second segment, the following formats are available: `json` and `zip`.
+
+`single-file` outputs all content in Shampoo in one file. `single-file?meta=1` 
 
 #### options.out
 Type: `String`
@@ -82,44 +104,13 @@ The path of the output file to save the API response to. Be sure the file extent
 out: "data/content.json"
 ```
 
-#### options.api
-Type: `Number`
-Default value: `1`
-Required
-
-The version of the API to access.
-
-#### options.type
-Type: `String`
-Default value: `dump`
-
-The type of API call you would like to make. `dump` is set by default - content dumps are useful for pulling down content from Shampoo in one go.
-
-Possible types are: `dump`, `page`, `pages`, `models`, `model`, `locales` and `locale`.
-
-#### options.format
-Type: `String`
-Default value: `json`
-
-The format of the content output. 
-
-Possible types are: `json` and `zip`.
-
-#### options.query
-Type: `String`
-Default value: none
-
-The query parameter of the API call to make. Currently, this value is appended to the end of the API call and you may append the URL path and query parameters to this field.
-
-This value could be `single-file` or `single-file?meta=1`.
-
 #### options.mediaOut
 Type: `String`
 Default value: none
 
-If you'd like to save down all of the media data that's been uploaded to AWS S3, specify a directory relative to the Gruntfile.js, which determines where the media is saved.  Note, this is done in a smart way, where only images that have been update on S3 get downloaded.  Not every image/asset is downloaded every time.
+Save down all media files that have been uploaded to AWS S3 by specifying a directory relative to the project root. Only images that have not yet been downloaded from S3 will download, effectively keeping your local media files synced down with S3.
 
-Keep in mind, valid AWS S3 credentials are required in your shampoo-config.json file.    
+Note: Valid AWS S3 credentials are required in the `.shampoorc` configuration.    
 
 
 ### Usage Examples
@@ -128,35 +119,33 @@ In this example, the common options are set with credentials and shared options.
 
 ```js
 shampoo: {
-      options: {
-        privateConfig: grunt.file.readJSON("./shampoo-config.json"),
-        domain: "dev.shampoo2.app",
-        type: "dump",
-        format: "json",
-        mediaOut: "app/images/"
-      },
-      en: {
-        options: {
-          query: "locale/en",
-          out: "app/content/en.json"
-        }
-      },
-      fr: {
-        options: {
-          query: "locale/fr",
-          out: "app/content/fr.json"
-        }
-      }
+  options: {
+    domain: "yoursite.shampoo.io",
+    mediaOut: "app/images/"
+  },
+  en: {
+    options: {
+      query: "dump/json/locale/en",
+      out: "app/content/en.json"
     }
+  },
+  fr: {
+    options: {
+      query: "dump/json/locale/fr",
+      out: "app/content/fr.json"
+    }
+  }
+}
 ```
 
 ## About Shampoo
 
-Shampoo is a CMS developed by some folks at Soap Creative, hosted at http://shampoo.io. It is currently in active development.
+Shampoo is a CMS developed by some folks at Soap Creative, hosted on http://shampoo.io. It is currently in active development.
 
 ## Contributing
 
 If you are a user of Shampoo and use this plugin, please contribute and help keep the plugin up to date with the API.
 
 ## Release History
-_(Initial)_
+
+
