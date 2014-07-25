@@ -32,7 +32,8 @@ module.exports = function(grunt) {
 
     shampoo: {
       options: {
-        mediaOut: "app/images"
+        mediaOut: "app/images/",
+        mediaCwd: "images/"
       },
       en: {
         options: {

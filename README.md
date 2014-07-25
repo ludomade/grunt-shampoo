@@ -107,11 +107,18 @@ out: "data/content.json"
 #### options.mediaOut
 Type: `String`
 Default value: none
+Optional
 
 Save down all media files that have been uploaded to AWS S3 by specifying a directory relative to the project root. Only images that have not yet been downloaded from S3 will download, effectively keeping your local media files synced down with S3.
 
 Note: Valid AWS S3 credentials are required in the `.shampoorc` configuration.    
 
+#### options.mediaCwd
+Type: `String`
+Default value: none
+Optional
+
+Specify relative media path to be output in JSON if different from `mediaOut`. E.g. If you download media files to `app/images/` but would like your image path in the JSON to be output as `images/`, you can specify so with this option.  
 
 ### Usage Examples
 
@@ -121,7 +128,8 @@ In this example, the common options are set with credentials and shared options.
 shampoo: {
   options: {
     domain: "yoursite.shampoo.io",
-    mediaOut: "app/images/"
+    mediaOut: "app/images/",
+    mediaCwd: "images/"
   },
   en: {
     options: {

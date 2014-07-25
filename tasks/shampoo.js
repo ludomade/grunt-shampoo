@@ -31,13 +31,13 @@ module.exports = function( grunt ) {
       ]));
     }
 
-    function getMediaAssets( obj, collection, mediaOut ) {
+    function getMediaAssets( obj, collection, mediaCwd ) {
 
       for( var key in obj ) {
 
         if( typeof obj[key] === "object" ) {
               
-          getMediaAssets( obj[key], collection, mediaOut );
+          getMediaAssets( obj[key], collection, mediaCwd );
 
         } else if( typeof obj[key] === "string" ) {
 
@@ -52,7 +52,7 @@ module.exports = function( grunt ) {
                 collection.push(dest);
               }
 
-              obj[key] = mediaOut + dest;
+              obj[key] = mediaCwd + dest;
 
           }
         }
@@ -152,9 +152,9 @@ module.exports = function( grunt ) {
       });
 
       client.getFile(src, function (err, res) {
+
         // If there was an upload error or any status other than a 200, we
         // can assume something went wrong.
-
         if (err || res.statusCode !== 200) {
           grunt.log.error("Error retrieving file: " + dest);
           //return dfd.reject(makeError(MSG_ERR_DOWNLOAD, src, err || res.statusCode));
@@ -212,6 +212,14 @@ module.exports = function( grunt ) {
       return false;
     }
 
+    if (!options.mediaOut) {
+      options.mediaOut = ""
+    }
+
+    if (!options.mediaCwd) {
+      options.mediaCwd = ""
+    }
+
     var requestId = (new Date()).getTime() + "" + Math.floor(Math.random()*10000000);
     var token = sha256( options.secret + options.key + requestId );
 
@@ -234,12 +242,20 @@ module.exports = function( grunt ) {
         if( options.mediaOut !== "" ) {
 
             //if media doesn't end in "/", add it in.
-            if ( options.mediaOut.substring( options.mediaOut.length - 1 ) !== "/" ) {
+            if( options.mediaOut.substring( options.mediaOut.length - 1 ) !== "/" ) {
                 options.mediaOut += "/";
             }
 
+            if( options.mediaCwd !== "" ) {
+              if ( options.mediaCwd.substring( options.mediaCwd.length - 1 ) !== "/" ) {
+                  options.mediaCwd += "/";
+              }
+            } else {
+              options.mediaCwd = options.mediaOut;
+            }
+
             client = makeClient( options.aws );
-            mediaAssets = getMediaAssets( body, mediaAssets, options.mediaOut );
+            mediaAssets = getMediaAssets( body, mediaAssets, options.mediaCwd );
 
             writeJsonFile( options.out, body );
 
