@@ -73,14 +73,14 @@ module.exports = function( grunt ) {
       fs.exists( dest, function( fileExists ) {
 
         if ( fileExists ) {
+
           //if the file exists, lets check to see if it needs to be re-downloaded.
-          
           client.headFile( relativeToBucket, function( err, res ) {
 
             var localHash = "";
             var remoteHash = res.headers.etag.replace(/"/g, '');
-            //grab the remote etag from AWS, and compare it against a md5 of our local file.
 
+            //grab the remote etag from AWS, and compare it against a md5 of our local file.
             fs.readFile( dest, function ( err, data ) {
 
               localHash = crypto.createHash('md5').update(data).digest('hex');
