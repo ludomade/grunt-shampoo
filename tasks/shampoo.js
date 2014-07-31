@@ -358,11 +358,11 @@ module.exports = function( grunt ) {
     }
 
     if (!options.mediaOut) {
-      options.mediaOut = ""
+      options.mediaOut = "";
     }
 
     if (!options.mediaCwd) {
-      options.mediaCwd = ""
+      options.mediaCwd = "";
     }
 
     var requestId = (new Date()).getTime() + "" + Math.floor(Math.random()*10000000);
