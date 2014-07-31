@@ -16,7 +16,8 @@ var request = require("request"),
     deferred = require('underscore.deferred'),
     crypto = require('crypto'),
     rc = require('rc'),
-    DecompressZip = require('decompress-zip');
+    DecompressZip = require('decompress-zip'),
+    fs = require('node-fs');
 
 var client = null;
 
@@ -90,9 +91,6 @@ module.exports = function( grunt ) {
             done();
 
           }
-
-          grunt.log.ok( "Content saved locally." );
-
         }
       });
 
@@ -111,6 +109,7 @@ module.exports = function( grunt ) {
       fs.exists( options.zipOut + zipFolderName, function( fileExists ) {
 
         if ( !fileExists ) {
+          grunt.log.ok( "Folder doesn't exist. Creating \"" + options.zipOut + zipFolderName + "\"" );
           fs.mkdirSync(options.zipOut + zipFolderName);
         }
 
@@ -140,7 +139,7 @@ module.exports = function( grunt ) {
               }
 
             } else {
-              
+
               done();
 
             }
@@ -182,12 +181,11 @@ module.exports = function( grunt ) {
       client = makeClient( options.aws );
       mediaAssets = getMediaAssets( body, mediaAssets, options.mediaCwd );
 
-      writeJsonFile( options.out, body );
-
       var loadCounter = 0;
       var next = function() {
         loadCounter++;
         if( loadCounter === mediaAssets.length ) {
+          writeJsonFile( options.out, body );
           done();
         }
       };
@@ -220,10 +218,10 @@ module.exports = function( grunt ) {
             fs.readFile( dest, function ( err, data ) {
 
               localHash = crypto.createHash('md5').update(data).digest('hex');
-
               if ( remoteHash === localHash ) {
-                
                 //we don't need to download this file - its the same as what we've got.
+                grunt.log.write( dest + " ");
+                grunt.log.error( "skipped" );
                 doneCallback();
                 return;
 
@@ -272,7 +270,8 @@ module.exports = function( grunt ) {
     }
 
     function writeJsonFile(out, body) {
-
+      grunt.log.subhead( "Retrieving content..." );
+      grunt.log.write( out + " ") + grunt.log.ok( "saved" );
       grunt.file.write(out, JSON.stringify(body, null, '\t'));
 
     }
@@ -280,11 +279,11 @@ module.exports = function( grunt ) {
     function downloadFile(dest, src, doneCallback) {
 
       // Create a local stream we can write the downloaded file to.
-      grunt.log.ok("Downloading: " + dest);
-
       var file = fs.createWriteStream(dest);
       file.on("error", function(e) {
         grunt.log.error("Error creating file: " + dest);
+        doneCallback()
+        return;
       });
 
       client.getFile(src, function (err, res) {
@@ -308,10 +307,21 @@ module.exports = function( grunt ) {
           })
           .on('end', function () {
             file.end();
+            grunt.log.write( dest + " " );
+            grunt.log.ok( "downloaded" );
             doneCallback();
           });
       });
 
+    }
+
+    function requestFiles() {
+      grunt.log.subhead( "Retrieving files..." );
+      if(doUnZip) {
+        requestZip(url, options, done);
+      } else {
+        requestJson(url, options, done);
+      }
     }
 
     // Mix in default options, .shampoorc file
@@ -357,6 +367,11 @@ module.exports = function( grunt ) {
       return false;
     }
 
+    var requestId = (new Date()).getTime() + "" + Math.floor(Math.random()*10000000);
+    var token = sha256( options.secret + options.key + requestId );
+
+    var url = "http://" + options.domain + "/api/v" + options.api + "/" + options.query + "?token=" + token + "&requestId=" + requestId;
+
     if (!options.mediaOut) {
       options.mediaOut = "";
     }
@@ -365,19 +380,20 @@ module.exports = function( grunt ) {
       options.mediaCwd = "";
     }
 
-    var requestId = (new Date()).getTime() + "" + Math.floor(Math.random()*10000000);
-    var token = sha256( options.secret + options.key + requestId );
-
-    var url = "http://" + options.domain + "/api/v" + options.api + "/" + options.query + "?token=" + token + "&requestId=" + requestId;
-
-    if(doUnZip) {
-
-      requestZip(url, options, done);
-
+    // Create directory if doesn't exist
+    if(options.mediaOut && !fs.existsSync(options.mediaOut)){
+      fs.mkdir( options.mediaOut, '0777', true, function(err) {
+        if(err) {
+          grunt.log.error( err );
+        } else {
+          grunt.log.ok( "Folder doesn't exist. Creating \"" + options.mediaOut + "\"" );
+        }
+        setTimeout( function() {
+          requestFiles();
+        }, 1000 );
+      });
     } else {
-
-      requestJson(url, options, done);
-
+      requestFiles();
     }
 
   });
