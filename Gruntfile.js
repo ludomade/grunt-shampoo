@@ -31,17 +31,14 @@ module.exports = function(grunt) {
     },
 
     shampoo: {
-      options: {
-        mediaOut: "app/images/",
-        mediaCwd: "images/"
-      },
-      en: {
+      media: {
         options: {
-          query: "dump/json/locale/en",
-          out: "content/en.json"
+          mediaOut: "content/images/",
+          mediaCwd: "images/",
+          out: "content/content.json"
         }
       },
-      all: {
+      zip: {
         options: {
           query: "dump/zip/pages/locales",
           zipOut: "content/"
