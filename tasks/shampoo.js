@@ -370,7 +370,10 @@ module.exports = function( grunt ) {
     var requestId = (new Date()).getTime() + "" + Math.floor(Math.random()*10000000);
     var token = sha256( options.secret + options.key + requestId );
 
-    var url = "http://" + options.domain + "/api/v" + options.api + "/" + options.query + "?token=" + token + "&requestId=" + requestId;
+    var url = "http://" + options.domain + "/api/v" + options.api + "/" + options.query + "?token=" + token + "&requestId=" + requestId
+
+    if options.params?
+      url += "&" + options.params
 
     if (!options.mediaOut) {
       options.mediaOut = "";

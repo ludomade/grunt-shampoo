@@ -99,6 +99,16 @@ For the second segment, the following formats are available: `json` and `zip`.
 
 `single-file` outputs all content in Shampoo in one file. `single-file?meta=1` 
 
+#### options.params
+Type: `String`
+Default value: None
+
+Optional GET query parameters to append to the query.
+
+```
+params: meta=1&children=1
+```
+
 #### options.out
 Type: `String`
 Default value: none

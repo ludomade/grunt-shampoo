@@ -36,6 +36,13 @@ module.exports = function(grunt) {
           out: "content/content.json"
         }
       },
+      page: {
+        options: {
+          query: "page/path/characters",
+          params: "children=1&meta=0",
+          out: "content/content.json"
+        }
+      },
       media: {
         options: {
           mediaOut: "content/images/",
