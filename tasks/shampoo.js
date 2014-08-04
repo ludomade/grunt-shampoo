@@ -372,8 +372,9 @@ module.exports = function( grunt ) {
 
     var url = "http://" + options.domain + "/api/v" + options.api + "/" + options.query + "?token=" + token + "&requestId=" + requestId
 
-    if options.params?
-      url += "&" + options.params
+    if (options.params) {
+      url += "&" + options.params;
+    }
 
     if (!options.mediaOut) {
       options.mediaOut = "";
