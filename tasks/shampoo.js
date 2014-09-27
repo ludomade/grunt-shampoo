@@ -18,6 +18,7 @@ var request = require("request"),
     rc = require('rc'),
     DecompressZip = require('decompress-zip'),
     fs = require('fs'),
+    util = require('util'),
     mkdirp = require('mkdirp');
 
 var client = null;
@@ -398,11 +399,17 @@ module.exports = function( grunt ) {
 
     // Create directory if doesn't exist
     if(options.mediaOut && !fs.existsSync(options.mediaOut)){
+
+      grunt.verbose.writeln(util.format(
+        "Folder doesn't exist. Creating %j", options.mediaOut));
+
       mkdirp( options.mediaOut, null, function(err) {
         if(err) {
-          grunt.log.error( err );
+          grunt.log.error(util.format(
+            "Couldn't create %j (%s)", options.mediaOut, String(err)));
         } else {
-          grunt.log.ok( "Folder doesn't exist. Creating \"" + options.mediaOut + "\"" );
+          grunt.verbose.ok(util.format(
+            "Created %j", options.mediaOut));
         }
         setTimeout( function() {
           requestFiles();
