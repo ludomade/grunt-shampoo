@@ -410,10 +410,8 @@ module.exports = function( grunt ) {
         } else {
           grunt.verbose.ok(util.format(
             "Created %j", options.mediaOut));
-        }
-        setTimeout( function() {
           requestFiles();
-        }, 1000 );
+        }
       });
     } else {
       requestFiles();
