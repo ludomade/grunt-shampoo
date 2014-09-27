@@ -71,29 +71,42 @@ module.exports = function( grunt ) {
       var mediaAssets = [];
 
       request(url, function( error, response, body ) {
-        response = response || { statusCode: 0 };
-        body = JSON.parse( body );
-        if( body.error ) {
-          grunt.log.error( "Error: " + body.message );
-          return done( body.message );
-        } else if (error) {
-          return done( error );
-        } else if ((response.statusCode < 200 || response.statusCode > 399)) {
-          return done( "[" + response.statusCode + "] " + body );
+        var errorFormatArgs = null,
+          jsonContent;
+        if (error) {
+          errorFormatArgs = [ "Error requesting %j: %s", url, error ];
+        } else if (!response) {
+          errorFormatArgs = [ "Empty response for %j", url ];
+        } else if (response.statusCode !== 200) {
+          errorFormatArgs = [ "Unexpected response for %j: %s", url, response.statusCode ];
+        } else {
+          try {
+            jsonContent = JSON.parse(body);
+          } catch (parseError) {
+            errorFormatArgs = [ "Error parsing %j as JSON: %s", url, parseError ];
+          }
         }
-        
-        if( options.out ) {
-          if( options.mediaOut !== "" ) {
 
-            saveMedia(options, body, done);
+        if (errorFormatArgs) {
+          var errorMessage = util.format.apply(util, errorFormatArgs);
+          grunt.log.error(errorMessage);
+          return done(errorMessage);
+        }
+
+        if( options.out ) {
+          if( options.mediaOut ) {
+
+            saveMedia(options, jsonContent, done);
 
           } else {
 
-            writeJsonFile( options.out, body );
+            writeJsonFile( options.out, jsonContent );
             done();
 
           }
         }
+
+        // TODO: check, do we call done if we fall through to here?
       });
 
     }
