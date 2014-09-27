@@ -17,7 +17,8 @@ var request = require("request"),
     crypto = require('crypto'),
     rc = require('rc'),
     DecompressZip = require('decompress-zip'),
-    fs = require('node-fs');
+    fs = require('fs'),
+    mkdirp = require('mkdirp');
 
 var client = null;
 
@@ -110,7 +111,7 @@ module.exports = function( grunt ) {
 
         if ( !fileExists ) {
           grunt.log.ok( "Folder doesn't exist. Creating \"" + options.zipOut + zipFolderName + "\"" );
-          fs.mkdirSync(options.zipOut + zipFolderName);
+          mkdirp.sync(options.zipOut + zipFolderName);
         }
 
         //grab down the zip we're looking for and uncompress it
@@ -264,7 +265,7 @@ module.exports = function( grunt ) {
 
             } else {
 
-              fs.mkdir(destDir, function(err){
+              mkdirp(destDir, null, function(err){
                 
                 downloadFile(dest, relativeToBucket, doneCallback);
 
@@ -397,7 +398,7 @@ module.exports = function( grunt ) {
 
     // Create directory if doesn't exist
     if(options.mediaOut && !fs.existsSync(options.mediaOut)){
-      fs.mkdir( options.mediaOut, '0777', true, function(err) {
+      mkdirp( options.mediaOut, null, function(err) {
         if(err) {
           grunt.log.error( err );
         } else {
