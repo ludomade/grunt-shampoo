@@ -300,22 +300,13 @@ module.exports = function( grunt ) {
     }
 
     function requestFiles(options, gruntCallback) {
-      // TODO: do we even need to do this if we're going to be mkdir-p'ing
-      // subdirs anyway?
-      logMkdirp(options.mediaOut, null, function (error) {
-        if (error) {
-          gruntCallback(false);
-          return;
-        }
-        var url = createApiUrl(options, createRequestId());
-
-        grunt.log.subhead( "Retrieving files..." );
-        if (isZipQuery(options.query)) {
-          requestZip(url, options, gruntCallback);
-        } else {
-          requestJson(url, options, gruntCallback);
-        }
-      });
+      grunt.log.subhead( "Retrieving files..." );
+      var url = createApiUrl(options, createRequestId());
+      if (isZipQuery(options.query)) {
+        requestZip(url, options, gruntCallback);
+      } else {
+        requestJson(url, options, gruntCallback);
+      }
     }
 
     function isZipQuery(query) {
@@ -328,8 +319,8 @@ module.exports = function( grunt ) {
         api: 1,
         query: "dump/json/single-file",
         out: "data/content.json",
-        mediaOut: ".",
-        mediaCwd: "."
+        mediaOut: null,
+        mediaCwd: null
       }));
 
       var messages = [ ];
