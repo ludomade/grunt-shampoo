@@ -18,7 +18,8 @@ var request = require("request"),
     fs = require('fs'),
     path = require('path'),
     util = require('util'),
-    mkdirp = require('mkdirp');
+    mkdirp = require('mkdirp'),
+    _ = require('lodash');
 
 var HTTP_OK = 200,
     HTTP_NOT_MODIFIED = 304;
@@ -28,8 +29,6 @@ var client = null;
 module.exports = function( grunt ) {
 
   grunt.registerMultiTask( "shampoo", "Retrieve content from the Shampoo CMS API on shampoo.io.", function() {
-
-    var _ = grunt.util._;
 
     function makeClient( options ) {
       return knox.createClient( _.pick(options, [
