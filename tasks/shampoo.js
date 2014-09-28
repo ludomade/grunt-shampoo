@@ -70,8 +70,6 @@ module.exports = function( grunt ) {
 
     function requestJson(url, options, done) {
 
-      var mediaAssets = [];
-
       request(url, function( error, response, body ) {
         var errorFormatArgs = null,
           jsonContent;
@@ -142,8 +140,7 @@ module.exports = function( grunt ) {
 
               for(var key in log) {
                 var unzippedFile = options.zipOut + log[key].deflated;
-                var mediaAssets = [];
-                
+
                 fs.readFile( unzippedFile, function ( err, data ) {
 
                   var body = JSON.parse(data);
@@ -280,11 +277,11 @@ module.exports = function( grunt ) {
         }
 
         if (logArgs) {
-          var message = util.format.apply(util, logArgs);
+          logMessage = util.format.apply(util, logArgs);
           if (isError) {
-            grunt.log.error(message);
+            grunt.log.error(logMessage);
           } else {
-            grunt.log.writeln(message);
+            grunt.log.writeln(logMessage);
           }
         }
 
