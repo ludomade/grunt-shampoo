@@ -304,8 +304,7 @@ module.exports = function( grunt ) {
       var file = fs.createWriteStream(dest);
       file.on("error", function(e) {
         grunt.log.error("Error creating file: " + dest);
-        doneCallback()
-        return;
+        doneCallback();
       });
 
       client.getFile(src, function (err, res) {
