@@ -120,7 +120,8 @@ module.exports = function( grunt ) {
         if (errorFormatArgs) {
           var errorMessage = util.format.apply(util, errorFormatArgs);
           grunt.log.error(errorMessage);
-          return done(errorMessage);
+          done(false);
+          return;
         }
 
         if( options.out ) {
@@ -132,6 +133,7 @@ module.exports = function( grunt ) {
 
             writeJsonFile( options.out, jsonContent );
             done();
+            return;
 
           }
         }
