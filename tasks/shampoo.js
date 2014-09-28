@@ -18,6 +18,7 @@ var request = require("request"),
     rc = require('rc'),
     DecompressZip = require('decompress-zip'),
     fs = require('fs'),
+    path = require('path'),
     util = require('util'),
     mkdirp = require('mkdirp');
 
@@ -261,10 +262,7 @@ module.exports = function( grunt ) {
         } else {
 
           //we don't have this file in our system, so download it.
-
-          var destDir = dest.split("/");
-          destDir.pop();
-          destDir = destDir.join("/");
+          var destDir = path.dirname(destDir);
 
           fs.exists(destDir, function(dirExists) {
             
