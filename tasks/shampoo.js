@@ -226,24 +226,15 @@ module.exports = function( grunt ) {
       dest = mediaOut + dest;
 
       var localHash = null;
-      var destDir = path.dirname(dest);
 
       fs.readFile( dest, function ( err, data ) {
         if (!err) {
           localHash = crypto.createHash('md5').update(data).digest('hex');
         }
 
-        fs.exists(destDir, function(dirExists) {
-          if (dirExists) {
+        logMkdirp(path.dirname(dest), function (error) {
+          if (!error) {
             downloadFile(client, dest, relativeToBucket, localHash, doneCallback);
-          } else {
-            mkdirp(destDir, null, function(err){
-              if (err) {
-                grunt.log.error("Error creating directory %j: %s", destDir, err);
-              } else {
-                downloadFile(client, dest, relativeToBucket, localHash, doneCallback);
-              }
-            });
           }
         });
       });
