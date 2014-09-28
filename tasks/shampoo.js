@@ -299,13 +299,23 @@ module.exports = function( grunt ) {
 
     }
 
-    function requestFiles() {
-      grunt.log.subhead( "Retrieving files..." );
-      if(doUnZip) {
-        requestZip(url, options, done);
-      } else {
-        requestJson(url, options, done);
-      }
+    function requestFiles(options, gruntCallback) {
+      // TODO: do we even need to do this if we're going to be mkdir-p'ing
+      // subdirs anyway?
+      logMkdirp(options.mediaOut, null, function (error) {
+        if (error) {
+          gruntCallback(false);
+          return;
+        }
+        var url = createApiUrl(options, createRequestId());
+
+        grunt.log.subhead( "Retrieving files..." );
+        if (isZipQuery(options.query)) {
+          requestZip(url, options, gruntCallback);
+        } else {
+          requestJson(url, options, gruntCallback);
+        }
+      });
     }
 
     function isZipQuery(query) {
@@ -388,33 +398,29 @@ module.exports = function( grunt ) {
       return url + "?" + querystring.stringify(queryParams);
     }
 
-    var done = this.async();
-
-    var optionResult = getOptions();
-    if (!optionResult.ok) {
-      grunt.log.error(optionResult.messages.join("\n"));
-      return false;
-    }
-    var options = optionResult.options;
-
-    var url = createApiUrl(options, createRequestId());
-
-    // Create directory if doesn't exist
-    if(options.mediaOut && !fs.existsSync(options.mediaOut)){
-
-      grunt.verbose.writeln("Folder doesn't exist. Creating %j", options.mediaOut);
-
-      mkdirp( options.mediaOut, null, function(err) {
-        if(err) {
-          grunt.log.error("Couldn't create %j (%s)", options.mediaOut, String(err));
-        } else {
-          grunt.verbose.ok("Created %j", options.mediaOut);
-          requestFiles();
+    function logMkdirp(path, options, callback) {
+      if (typeof options === 'function') {
+        callback = options;
+        options = null;
+      }
+      mkdirp(path, options, function (error, created) {
+        if (error) {
+          grunt.log.error("Couldn't create %j: %s", path, error);
         }
+        callback(error, created);
       });
-    } else {
-      requestFiles();
     }
 
+    function main() {
+      var optionResult = getOptions();
+      if (!optionResult.ok) {
+        grunt.log.error(optionResult.messages.join("\n"));
+        return false;
+      }
+      
+      requestFiles(optionResult.options, this.async());
+    }
+
+    return main();
   });
 };
