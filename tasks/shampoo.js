@@ -35,6 +35,8 @@ module.exports = function( grunt ) {
 
   grunt.registerMultiTask( "shampoo", "Retrieve content from the Shampoo CMS API on shampoo.io.", function() {
 
+    var thisTask = this;
+
     function makeClient( options ) {
       return knox.createClient( _.pick(options, [
         'region', 'endpoint', 'port', 'key', 'secret', 'access', 'bucket', 'secure', 'headers', 'style'
@@ -340,7 +342,7 @@ module.exports = function( grunt ) {
 
     function getOptions() {
       // Mix in default options, .shampoorc file
-      var options = rc("shampoo", this.options({
+      var options = rc("shampoo", thisTask.options({
         api: 1,
         query: "dump/json/single-file",
         out: "data/content.json",
@@ -453,7 +455,7 @@ module.exports = function( grunt ) {
     function main() {
       var optionResult = getOptions();
       var messagesString = optionResult.messages.join("\n");
-      var done = this.async();
+      var done = thisTask.async();
 
       if (optionResult.ok) {
         grunt.log.writeln(messagesString);
