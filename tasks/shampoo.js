@@ -318,8 +318,8 @@ module.exports = function( grunt ) {
         api: 1,
         query: "dump/json/single-file",
         out: "data/content.json",
-        mediaOut: "",
-        mediaCwd: ""
+        mediaOut: ".",
+        mediaCwd: "."
       }));
 
       var messages = [ ];
