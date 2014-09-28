@@ -243,7 +243,8 @@ module.exports = function( grunt ) {
 
     function writeJsonFile(out, body) {
       grunt.log.subhead( "Retrieving content..." );
-      grunt.log.write( out + " ") + grunt.log.ok( "saved" );
+      grunt.log.write( out + " ");
+      grunt.log.ok( "saved" );
       grunt.file.write(out, JSON.stringify(body, null, '\t'));
 
     }
