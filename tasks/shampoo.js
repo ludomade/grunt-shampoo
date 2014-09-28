@@ -229,7 +229,7 @@ module.exports = function( grunt ) {
           } else {
             mkdirp(destDir, null, function(err){
               if (err) {
-                grunt.log.error(util.format("Error creating directory %j: %s", destDir, err));
+                grunt.log.error("Error creating directory %j: %s", destDir, err);
               } else {
                 downloadFile(dest, relativeToBucket, localHash, doneCallback);
               }
@@ -256,49 +256,36 @@ module.exports = function( grunt ) {
       }
 
       client.getFile(src, requestHeaders, function (err, res) {
-        var logArgs = null,
-            logMessage = null,
-            isError = false,
-            doDownload = false;
+        var stop = false;
 
         if (err) {
-          logArgs = [ "Error requesting %j: %s", src, err ];
-          isError = true;
+          grunt.log.error("Error requesting %j: %s", src, err);
+          stop = true;
         } else if (!res) {
-          logArgs = [ "Empty response for %j", src ];
-          isError = true;
+          grunt.log.error("Error requesting %j", src);
+          stop = true;
         } else if (res.statusCode === HTTP_NOT_MODIFIED) {
-          logArgs = [ "%s >> up to date", dest ];
-        } else if (res.statusCode === HTTP_OK) {
-          doDownload = true;
-        } else {
-          logArgs = [ "Unexpected response for %j: %s", url, res.statusCode ];
-          isError = true;
+          grunt.log.writeln("%s >> up to date", dest);
+          stop = true;
+        } else if (res.statusCode !== HTTP_OK) {
+          grunt.log.error("Unexpected response for %j: %s", url, res.statusCode);
+          stop = true;
         }
 
-        if (logArgs) {
-          logMessage = util.format.apply(util, logArgs);
-          if (isError) {
-            grunt.log.error(logMessage);
-          } else {
-            grunt.log.writeln(logMessage);
-          }
-        }
-
-        if (isError || !doDownload) {
+        if (stop) {
           doneCallback();
           return;
         }
 
         var file = fs.createWriteStream(dest);
         file.on("error", function(e) {
-          grunt.log.error(util.format("Error writing to %j: %s", dest, e));
+          grunt.log.error("Error writing to %j: %s", dest, e);
           doneCallback();
         });
 
         res
           .on('error', function (err) {
-            grunt.log.error(util.format("Error reading %j: %s", src, err));
+            grunt.log.error("Error reading %j: %s", src, err);
             doneCallback();
           })
           .on('end', function () {
@@ -384,16 +371,13 @@ module.exports = function( grunt ) {
     // Create directory if doesn't exist
     if(options.mediaOut && !fs.existsSync(options.mediaOut)){
 
-      grunt.verbose.writeln(util.format(
-        "Folder doesn't exist. Creating %j", options.mediaOut));
+      grunt.verbose.writeln("Folder doesn't exist. Creating %j", options.mediaOut);
 
       mkdirp( options.mediaOut, null, function(err) {
         if(err) {
-          grunt.log.error(util.format(
-            "Couldn't create %j (%s)", options.mediaOut, String(err)));
+          grunt.log.error("Couldn't create %j (%s)", options.mediaOut, String(err));
         } else {
-          grunt.verbose.ok(util.format(
-            "Created %j", options.mediaOut));
+          grunt.verbose.ok("Created %j", options.mediaOut);
           requestFiles();
         }
       });
