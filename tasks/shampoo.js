@@ -231,7 +231,11 @@ module.exports = function( grunt ) {
             downloadFile(dest, relativeToBucket, localHash, doneCallback);
           } else {
             mkdirp(destDir, null, function(err){
-              downloadFile(dest, relativeToBucket, localHash, doneCallback);
+              if (err) {
+                grunt.log.error(util.format("Error creating directory %j: %s", destDir, err));
+              } else {
+                downloadFile(dest, relativeToBucket, localHash, doneCallback);
+              }
             });
           }
         });
