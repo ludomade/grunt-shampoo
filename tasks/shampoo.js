@@ -22,6 +22,9 @@ var request = require("request"),
     util = require('util'),
     mkdirp = require('mkdirp');
 
+var HTTP_OK = 200,
+    HTTP_NOT_MODIFIED = 304;
+
 var client = null;
 
 module.exports = function( grunt ) {
@@ -78,7 +81,7 @@ module.exports = function( grunt ) {
           errorFormatArgs = [ "Error requesting %j: %s", url, error ];
         } else if (!response) {
           errorFormatArgs = [ "Empty response for %j", url ];
-        } else if (response.statusCode !== 200) {
+        } else if (response.statusCode !== HTTP_OK) {
           errorFormatArgs = [ "Unexpected response for %j: %s", url, response.statusCode ];
         } else {
           try {
@@ -264,9 +267,9 @@ module.exports = function( grunt ) {
         } else if (!res) {
           logArgs = [ "Empty response for %j", src ];
           isError = true;
-        } else if (res.statusCode === 304) {
+        } else if (res.statusCode === HTTP_NOT_MODIFIED) {
           logArgs = [ "%s >> up to date", dest ];
-        } else if (res.statusCode === 200) {
+        } else if (res.statusCode === HTTP_OK) {
           doDownload = true;
         } else {
           logArgs = [ "Unexpected response for %j: %s", url, res.statusCode ];
