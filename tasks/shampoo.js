@@ -226,15 +226,11 @@ module.exports = function( grunt ) {
           //if the file exists, lets check to see if it needs to be re-downloaded.
           client.headFile( relativeToBucket, function( err, res ) {
 
-            if( res.headers && res.headers.etag ) {
-              // Let through
-            } else {
-              if( res.headers.etag == undefined ) {
-                grunt.log.write( dest + " ");
-                grunt.log.error( "unable to retrieve remote file header, skipped." );
-                doneCallback();
-                return;                
-              }
+            if( !res.headers || !res.headers.etag ) {
+              grunt.log.write( dest + " ");
+              grunt.log.error( "unable to retrieve remote file header, skipped." );
+              doneCallback();
+              return;                
             }
 
             var localHash = "";
