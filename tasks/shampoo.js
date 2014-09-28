@@ -29,8 +29,6 @@ var HTTP_OK = 200,
 var ZIP_FOLDER_NAME = "content-backups",
     ZIP_FILE_NAME_PREFIX = "content-dump-";
 
-var client = null;
-
 module.exports = function( grunt ) {
 
   grunt.registerMultiTask( "shampoo", "Retrieve content from the Shampoo CMS API on shampoo.io.", function() {
@@ -205,8 +203,7 @@ module.exports = function( grunt ) {
     function saveMedia(options, body, done) {
 
       var mediaAssets = getMediaAssets( body, options.mediaCwd );
-
-      client = makeClient( options.aws );
+      var client = makeClient( options.aws );
 
       var loadCounter = 0;
       var next = function() {
@@ -218,12 +215,12 @@ module.exports = function( grunt ) {
       };
 
       for( var key in mediaAssets ) {
-          verifyDownload( mediaAssets[key], options.mediaOut, next );
+          verifyDownload( client, mediaAssets[key], options.mediaOut, next );
       }
 
     }
 
-    function verifyDownload( dest, mediaOut, doneCallback ) {
+    function verifyDownload( client, dest, mediaOut, doneCallback ) {
 
       var relativeToBucket = dest;
       dest = mediaOut + dest;
@@ -238,13 +235,13 @@ module.exports = function( grunt ) {
 
         fs.exists(destDir, function(dirExists) {
           if (dirExists) {
-            downloadFile(dest, relativeToBucket, localHash, doneCallback);
+            downloadFile(client, dest, relativeToBucket, localHash, doneCallback);
           } else {
             mkdirp(destDir, null, function(err){
               if (err) {
                 grunt.log.error("Error creating directory %j: %s", destDir, err);
               } else {
-                downloadFile(dest, relativeToBucket, localHash, doneCallback);
+                downloadFile(client, dest, relativeToBucket, localHash, doneCallback);
               }
             });
           }
@@ -261,7 +258,7 @@ module.exports = function( grunt ) {
 
     }
 
-    function downloadFile(dest, src, etag, doneCallback) {
+    function downloadFile(client, dest, src, etag, doneCallback) {
       var requestHeaders = { };
 
       if (etag) {
