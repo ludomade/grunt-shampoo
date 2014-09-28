@@ -68,15 +68,18 @@ module.exports = function( grunt ) {
 
     function getMediaAssets( obj, mediaCwd ) {
       
-      var toCheck = [ obj ],
+      var objQueue = [ obj ],
+        prefixQueue = [ "[Root]" ],
         remotePaths = { };
 
-      while (toCheck.length > 0) {
-        var thing = toCheck.shift();
+      while (objQueue.length > 0) {
+        var thing = objQueue.shift(),
+          prefix = prefixQueue.shift();
 
         // don't need to type check here, only objects and arrays will iterate,
         // which is what we want
         _.forOwn(thing, function (value, key) {
+          var keyPath = prefix + "." + key;
           if (typeof value === "string") {
             var assetPath = getMediaAssetPath(value);
 
@@ -84,13 +87,21 @@ module.exports = function( grunt ) {
               // rewrite the property in the JSON with the local path
               thing[key] = path.join(mediaCwd, assetPath);
 
+              grunt.verbose.writeln(
+                "Rewriting %s\n" +
+                "  old: %j\n" +
+                "  new: %j\n",
+                keyPath, value, thing[key]
+              );
+
               // record the remote path relative to its root downloading
               // setting it as an object property means dupes are naturally 
               // eliminated
               remotePaths[assetPath] = true;
             }
           } else {
-            toCheck.push(value);
+            objQueue.push(value);
+            prefixQueue.push(keyPath);
           }
         });
       }
@@ -214,6 +225,11 @@ module.exports = function( grunt ) {
 
       var mediaAssets = getMediaAssets( body, options.mediaCwd );
       var client = makeClient( options.aws );
+
+      grunt.verbose.writeln("Media queue is:");
+      mediaAssets.forEach(function (p) {
+        grunt.verbose.writeln("  %j", p);
+      });
 
       var loadCounter = 0;
       var next = function() {
