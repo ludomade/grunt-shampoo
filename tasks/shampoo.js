@@ -25,6 +25,9 @@ var request = require("request"),
 var HTTP_OK = 200,
     HTTP_NOT_MODIFIED = 304;
 
+var ZIP_FOLDER_NAME = "content-backups",
+    ZIP_FILE_NAME_PREFIX = "content-dump-";
+
 var client = null;
 
 module.exports = function( grunt ) {
@@ -111,12 +114,14 @@ module.exports = function( grunt ) {
 
     }
 
+    function generateZipFileName() {
+      return ZIP_FILE_NAME_PREFIX + Date.now() + ".zip";
+    }
+
     function requestZip(url, options, done) {
 
-      var zipFolderName = "content-backups";
-      var zipFileName = zipFolderName + "/content-dump-" + new Date().getTime() + ".zip";
       var zipPath = path.join(
-        options.zipOut, zipFolderName, zipFileName);
+        options.zipOut, ZIP_FOLDER_NAME, generateZipFileName());
 
       logMkdirp(path.dirname(zipPath), null, function (mkdirError) {
         if (mkdirError) {
