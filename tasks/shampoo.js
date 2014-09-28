@@ -42,13 +42,13 @@ module.exports = function( grunt ) {
       for( var key in obj ) {
 
         if( typeof obj[key] === "object" ) {
-              
+
           getMediaAssets( obj[key], collection, mediaCwd );
 
         } else if( typeof obj[key] === "string" ) {
 
           if(obj[key].indexOf(".amazonaws.com/") >= 0 ) {
-              
+
               var dest = obj[key].replace("http://", "").replace("https://", "");
               dest = dest.split("/");
               dest.shift();
@@ -130,11 +130,11 @@ module.exports = function( grunt ) {
 
         //grab down the zip we're looking for and uncompress it
         request(url, function() {
-          
+
           var unzipper = new DecompressZip(options.zipOut + zipFileName);
-          
+
           unzipper.on("extract", function (log) {
-            
+
             //on extraction of the zip, check if mediaOut is set, if so, loop through all the unzipped files, and grab down the neccesary media.
             if(options.mediaOut !== "") {
 
