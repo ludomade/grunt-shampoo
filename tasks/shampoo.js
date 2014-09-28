@@ -252,21 +252,19 @@ module.exports = function( grunt ) {
       fillQueue();
     }
 
-    function verifyDownload( client, dest, mediaOut, doneCallback ) {
+    function verifyDownload( client, remotePath, mediaOut, doneCallback ) {
 
-      var relativeToBucket = dest;
-      dest = mediaOut + dest;
-
+      var localPath = path.join(mediaOut, remotePath);
       var localHash = null;
 
-      fs.readFile( dest, function ( err, data ) {
+      fs.readFile( localPath, function ( err, data ) {
         if (!err) {
           localHash = crypto.createHash('md5').update(data).digest('hex');
         }
 
-        logMkdirp(path.dirname(dest), function (error) {
+        logMkdirp(path.dirname(localPath), function (error) {
           if (!error) {
-            downloadFile(client, dest, relativeToBucket, localHash, doneCallback);
+            downloadFile(client, localPath, remotePath, localHash, doneCallback);
           }
         });
       });
