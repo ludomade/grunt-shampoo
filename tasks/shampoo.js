@@ -29,6 +29,8 @@ var HTTP_OK = 200,
 var ZIP_FOLDER_NAME = "content-backups",
     ZIP_FILE_NAME_PREFIX = "content-dump-";
 
+var DEFAULT_MAX_CONNECTIONS = 8;
+
 module.exports = function( grunt ) {
 
   grunt.registerMultiTask( "shampoo", "Retrieve content from the Shampoo CMS API on shampoo.io.", function() {
@@ -207,17 +209,23 @@ module.exports = function( grunt ) {
 
       var loadCounter = 0;
       var next = function() {
-        loadCounter++;
-        if( loadCounter === mediaAssets.length ) {
+        loadCounter--;
+        fillQueue();
+      };
+
+      var fillQueue = function() {
+        if (mediaAssets.length === 0 && loadCounter === 0) {
           writeJsonFile( options.out, body );
           done();
+        } else {
+          while (mediaAssets.length > 0 && loadCounter < options.maxConnections) {
+            loadCounter++;
+            verifyDownload( client, mediaAssets.shift(), options.mediaOut, next );
+          }
         }
       };
 
-      for( var key in mediaAssets ) {
-          verifyDownload( client, mediaAssets[key], options.mediaOut, next );
-      }
-
+      fillQueue();
     }
 
     function verifyDownload( client, dest, mediaOut, doneCallback ) {
@@ -337,7 +345,8 @@ module.exports = function( grunt ) {
         query: "dump/json/single-file",
         out: "data/content.json",
         mediaOut: null,
-        mediaCwd: null
+        mediaCwd: null,
+        maxConnections: DEFAULT_MAX_CONNECTIONS
       }));
 
       var messages = [ ];
@@ -377,6 +386,21 @@ module.exports = function( grunt ) {
       } else {
         options.mediaCwd = normalizeDir(options.mediaCwd);
       }
+
+      var parsedMaxConnections = parseInt(options.maxConnections, 10);
+      if (isNaN(options.maxConnections)) {
+        messages.push(util.format(
+          "Invalid value for maxConnections: %j. Assuming default of %d.",
+          options.maxConnections, DEFAULT_MAX_CONNECTIONS
+        ));
+        parsedMaxConnections = DEFAULT_MAX_CONNECTIONS;
+      } else if (parsedMaxConnections < 1) {
+        messages.push(
+          "Value for maxConnections must be 1 or greater. Assuming 1.");
+        parsedMaxConnections = 1;
+      }
+
+      options.maxConnections = parsedMaxConnections;
 
       return {
         options: options,
@@ -428,12 +452,17 @@ module.exports = function( grunt ) {
 
     function main() {
       var optionResult = getOptions();
-      if (!optionResult.ok) {
-        grunt.log.error(optionResult.messages.join("\n"));
-        return false;
+      var messagesString = optionResult.messages.join("\n");
+      var done = this.async();
+
+      if (optionResult.ok) {
+        grunt.log.writeln(messagesString);
+        requestFiles(optionResult.options, done);
+      } else {
+        grunt.log.error(messagesString);
+        done(false);
       }
       
-      requestFiles(optionResult.options, this.async());
     }
 
     return main();
