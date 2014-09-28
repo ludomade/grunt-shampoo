@@ -18,6 +18,7 @@ var request = require("request"),
     fs = require('fs'),
     path = require('path'),
     util = require('util'),
+    url = require('url'),
     querystring = require('querystring'),
     mkdirp = require('mkdirp'),
     _ = require('lodash');
@@ -40,35 +41,59 @@ module.exports = function( grunt ) {
       ]));
     }
 
-    function getMediaAssets( obj, collection, mediaCwd ) {
+    function getMediaAssets( obj, mediaCwd ) {
+      
+      var toCheck = [ obj ],
+        remotePaths = { };
 
-      for( var key in obj ) {
+      while (toCheck.length > 0) {
+        var thing = toCheck.shift();
 
-        if( typeof obj[key] === "object" ) {
+        // don't need to type check here, only objects and arrays will iterate,
+        // which is what we want
+        _.forOwn(thing, function (value, key) {
+          if (typeof value === "string") {
+            var assetPath = getMediaAssetPath(value);
 
-          getMediaAssets( obj[key], collection, mediaCwd );
+            if (assetPath != null) {
+              // rewrite the property in the JSON with the local path
+              thing[key] = path.join(mediaCwd, assetPath);
 
-        } else if( typeof obj[key] === "string" ) {
-
-          if(obj[key].indexOf(".amazonaws.com/") >= 0 ) {
-
-              var dest = obj[key].replace("http://", "").replace("https://", "");
-              dest = dest.split("/");
-              dest.shift();
-              dest = dest.join("/");
-
-              if( collection.indexOf(dest) < 0 ) {
-                collection.push(dest);
-              }
-
-              obj[key] = mediaCwd + dest;
-
+              // record the remote path relative to its root downloading
+              // setting it as an object property means dupes are naturally 
+              // eliminated
+              remotePaths[assetPath] = true;
+            }
+          } else {
+            toCheck.push(value);
           }
-        }
+        });
       }
 
-      return collection;
+      return Object.keys(remotePaths);
+    }
 
+    function isMediaAssetUrl(assetUrl) {
+      // a URL is a media asset URL if its scheme/protocol is http or https,
+      // and its hostname is a subdomain of amazonaws.com.
+      return Boolean(
+        assetUrl &&
+        /^https?:$/i .test(assetUrl.protocol) &&
+        /\.amazonaws\.com$/i .test(assetUrl.hostname)
+      );
+    }
+
+    function getMediaAssetPath(assetUrlString) {
+      var assetUrl;
+      try {
+        assetUrl = url.parse(assetUrlString);
+        if (isMediaAssetUrl(assetUrl)) {
+          return assetUrl.pathname.charAt(0) === "/" ?
+            assetUrl.pathname.slice(1) :
+            assetUrl.pathname;
+        }
+      } catch (error) { } // url.parse failed, so just fall through to return null
+      return null;
     }
 
     function requestJson(url, options, done) {
@@ -179,10 +204,9 @@ module.exports = function( grunt ) {
 
     function saveMedia(options, body, done) {
 
-      var mediaAssets = [];
+      var mediaAssets = getMediaAssets( body, options.mediaCwd );
 
       client = makeClient( options.aws );
-      mediaAssets = getMediaAssets( body, mediaAssets, options.mediaCwd );
 
       var loadCounter = 0;
       var next = function() {
