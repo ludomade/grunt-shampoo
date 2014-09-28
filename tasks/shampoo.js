@@ -307,48 +307,66 @@ module.exports = function( grunt ) {
       }
     }
 
-    // Mix in default options, .shampoorc file
-    var options = rc("shampoo", this.options({
-      api: 1,
-      query: "dump/json/single-file",
-      out: "data/content.json"
-    }));
+    function isZipQuery(query) {
+      return query.indexOf("dump/zip/") === 0;
+    }
 
-    var doUnZip = false;
+    function getOptions() {
+      // Mix in default options, .shampoorc file
+      var options = rc("shampoo", this.options({
+        api: 1,
+        query: "dump/json/single-file",
+        out: "data/content.json",
+        mediaOut: "",
+        mediaCwd: ""
+      }));
+
+      var messages = [ ];
+      var missing = { };
+      var required = [ "key", "secret", "domain", "query", "out" ];
+
+      if (isZipQuery(options.query)) {
+        required.push("zipOut");
+      }
+
+      required.forEach(function (optionName) {
+        if (!options[optionName]) {
+          missing[optionName] = true;
+        }
+      });
+
+      var missingArray = Object.keys(missing);
+      if (missingArray.length > 0) {
+        messages.push("The following required options are not set: " +
+          missingArray.join(", "));
+      }
+
+      if (missing.key || missing.secret) {
+        messages.push("Values for 'key' and 'secret' are found in your Shampoo account under Settings.");
+      }
+
+      if (missing.zipOut) {
+        messages.push(util.format(
+          "The query %j returns a zip file. This requires the 'zipOut' option to be set.",
+          options.query
+        ));
+      }
+
+      return {
+        options: options,
+        messages: messages,
+        ok: messages.length === 0
+      };
+    }
 
     var done = this.async();
 
-    if (!options.key || !options.secret) {
-      grunt.log.error( "Shampoo API Key and Secret are required to use this plugin.\nGet them from your Shampoo account under 'Settings'.");
-    }
-
-    var invalids = [];
-
-    if (!options.domain) {
-      invalids.push("domain");
-    }
-
-    if (!options.query) {
-      invalids.push("query");
-    }
-
-    if (!options.out) {
-      invalids.push("out");
-    }
-
-    if(options.query.indexOf("dump/zip/") >= 0) {
-      doUnZip = true;
-
-      if(!options.zipOut) {
-        grunt.log.error("grunt-shampoo: you've specified a query which returns a zip file.  For this type of query please specify the zipOut option in the grunt task config.");
-        return false;
-      }
-    }
-
-    if (invalids.length > 0) {
-      grunt.log.error('grunt-shampoo is missing following options:', invalids.join(', '));
+    var optionResult = getOptions();
+    if (!optionResult.ok) {
+      grunt.log.error(optionResult.messages.join("\n"));
       return false;
     }
+    var options = optionResult.options;
 
     var requestId = (new Date()).getTime() + "" + Math.floor(Math.random()*10000000);
     var token = sha256( options.secret + options.key + requestId );
@@ -357,14 +375,6 @@ module.exports = function( grunt ) {
 
     if (options.params) {
       url += "&" + options.params;
-    }
-
-    if (!options.mediaOut) {
-      options.mediaOut = "";
-    }
-
-    if (!options.mediaCwd) {
-      options.mediaCwd = "";
     }
 
     // Create directory if doesn't exist
