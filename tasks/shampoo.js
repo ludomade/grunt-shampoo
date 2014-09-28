@@ -9,11 +9,9 @@
 'use strict';
 
 var request = require("request"),
-    async = require("async"),
     sha256 = require("sha256"),
     fs = require("fs"),
     knox = require("knox"),
-    deferred = require('underscore.deferred'),
     crypto = require('crypto'),
     rc = require('rc'),
     DecompressZip = require('decompress-zip'),
