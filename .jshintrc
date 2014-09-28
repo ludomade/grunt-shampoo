@@ -6,8 +6,12 @@
   "newcap": true,
   "noarg": true,
   "sub": true,
+  "noempty": true,
+  "nonbsp": true,
+  "nonew": true,
   "undef": true,
-  "boss": true,
+  "unused": true,
+  "strict": true,
   "eqnull": true,
   "node": true
 }
