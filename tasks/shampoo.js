@@ -99,6 +99,7 @@ module.exports = function( grunt ) {
     }
 
     function requestJson(url, options, done) {
+      grunt.verbose.write("Downloading JSON...");
 
       request(url, function( error, response, body ) {
         var errorFormatArgs = null,
@@ -118,12 +119,14 @@ module.exports = function( grunt ) {
         }
 
         if (errorFormatArgs) {
+          grunt.verbose.error();
           var errorMessage = util.format.apply(util, errorFormatArgs);
           grunt.log.error(errorMessage);
           done(false);
           return;
         }
 
+        grunt.verbose.ok();
         if( options.out ) {
           if( options.mediaOut ) {
 
@@ -158,6 +161,7 @@ module.exports = function( grunt ) {
           return;
         }
 
+        grunt.verbose.write("Downloading zip...");
         request(url, function(error, response, body) {
 
           // TODO: handle bads
@@ -315,9 +319,13 @@ module.exports = function( grunt ) {
     function requestFiles(options, gruntCallback) {
       grunt.log.subhead( "Retrieving files..." );
       var url = createApiUrl(options, createRequestId());
+      grunt.verbose.writeln("Url is %j", url);
+
       if (isZipQuery(options.query)) {
+        grunt.verbose.writeln("Zip job");
         requestZip(url, options, gruntCallback);
       } else {
+        grunt.verbose.writeln("JSON job");
         requestJson(url, options, gruntCallback);
       }
     }
