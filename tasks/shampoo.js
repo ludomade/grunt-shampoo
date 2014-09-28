@@ -115,23 +115,20 @@ module.exports = function( grunt ) {
 
       var zipFolderName = "content-backups";
       var zipFileName = zipFolderName + "/content-dump-" + new Date().getTime() + ".zip";
+      var zipPath = path.join(
+        options.zipOut, zipFolderName, zipFileName);
 
-      if( options.zipOut.substring( options.zipOut.length - 1 ) !== "/" ) {
-        options.zipOut += "/";
-      }
-
-      //check to see if our zip folder exists.  If not, create it.
-      fs.exists( options.zipOut + zipFolderName, function( fileExists ) {
-
-        if ( !fileExists ) {
-          grunt.log.ok( "Folder doesn't exist. Creating \"" + options.zipOut + zipFolderName + "\"" );
-          mkdirp.sync(options.zipOut + zipFolderName);
+      logMkdirp(path.dirname(zipPath), null, function (mkdirError) {
+        if (mkdirError) {
+          done(false);
+          return;
         }
 
-        //grab down the zip we're looking for and uncompress it
-        request(url, function() {
+        request(url, function(error, response, body) {
 
-          var unzipper = new DecompressZip(options.zipOut + zipFileName);
+          // TODO: handle bads
+
+          var unzipper = new DecompressZip(zipPath);
 
           unzipper.on("extract", function (log) {
 
@@ -161,15 +158,15 @@ module.exports = function( grunt ) {
           });
 
           unzipper.on("error", function(error) {
-            console.log(error);
-            grunt.log.error("An error occurred unzipping the file:" + options.zipOut + zipFileName);
+            grunt.log.error("An error occurred unzipping the file %j: %s", zipPath, error);
+            done(false);
           });
 
           unzipper.extract({
             path: options.zipOut
           });
 
-        }).pipe(fs.createWriteStream(options.zipOut + zipFileName));
+        }).pipe(fs.createWriteStream(zipPath));
 
       });
 
