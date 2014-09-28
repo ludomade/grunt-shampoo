@@ -214,77 +214,26 @@ module.exports = function( grunt ) {
 
     function verifyDownload( dest, mediaOut, doneCallback ) {
 
-      var relativeToBucket = "";
-
-      relativeToBucket = dest;
+      var relativeToBucket = dest;
       dest = mediaOut + dest;
 
-      //first check to see if the dest file exists in our project
-      fs.exists( dest, function( fileExists ) {
+      var localHash = null;
+      var destDir = path.dirname(dest);
 
-        if ( fileExists ) {
-
-          //if the file exists, lets check to see if it needs to be re-downloaded.
-          client.headFile( relativeToBucket, function( err, res ) {
-
-            if( !res.headers || !res.headers.etag ) {
-              grunt.log.write( dest + " ");
-              grunt.log.error( "unable to retrieve remote file header, skipped." );
-              doneCallback();
-              return;                
-            }
-
-            var localHash = "";
-            var remoteHash = res.headers.etag.replace(/"/g, '');
-
-            //grab the remote etag from AWS, and compare it against a md5 of our local file.
-            fs.readFile( dest, function ( err, data ) {
-
-              localHash = crypto.createHash('md5').update(data).digest('hex');
-              if ( remoteHash === localHash ) {
-                //we don't need to download this file - its the same as what we've got.
-                grunt.log.write( dest + " ");
-                grunt.log.error( "skipped" );
-                doneCallback();
-                return;
-
-              } else {
-
-                //the file hashes don't match, so we need to re-download it.
-                downloadFile( dest, relativeToBucket, doneCallback );
-
-              }
-
-            });
-
-          });
-        
-        } else {
-
-          //we don't have this file in our system, so download it.
-          var destDir = path.dirname(destDir);
-
-          fs.exists(destDir, function(dirExists) {
-            
-            //create the directory if it doesn't exist.
-            if(dirExists) {
-
-              downloadFile(dest, relativeToBucket, doneCallback);
-
-            } else {
-
-              mkdirp(destDir, null, function(err){
-                
-                downloadFile(dest, relativeToBucket, doneCallback);
-
-              });
-
-            }
-
-          });
-
+      fs.readFile( dest, function ( err, data ) {
+        if (!err) {
+          localHash = crypto.createHash('md5').update(data).digest('hex');
         }
 
+        fs.exists(destDir, function(dirExists) {
+          if (dirExists) {
+            downloadFile(dest, relativeToBucket, localHash, doneCallback);
+          } else {
+            mkdirp(destDir, null, function(err){
+              downloadFile(dest, relativeToBucket, localHash, doneCallback);
+            });
+          }
+        });
       });
 
     }
@@ -296,40 +245,66 @@ module.exports = function( grunt ) {
 
     }
 
-    function downloadFile(dest, src, doneCallback) {
+    function downloadFile(dest, src, etag, doneCallback) {
+      var requestHeaders = { };
 
-      // Create a local stream we can write the downloaded file to.
-      var file = fs.createWriteStream(dest);
-      file.on("error", function(e) {
-        grunt.log.error("Error creating file: " + dest);
-        doneCallback();
-      });
+      if (etag) {
+        requestHeaders["If-None-Match"] = etag;
+      }
 
-      client.getFile(src, function (err, res) {
+      client.getFile(src, requestHeaders, function (err, res) {
+        var logArgs = null,
+            logMessage = null,
+            isError = false,
+            doDownload = false;
 
-        // If there was an upload error or any status other than a 200, we
-        // can assume something went wrong.
-        if (err || res.statusCode !== 200) {
-          grunt.log.error("Error retrieving file: " + dest);
+        if (err) {
+          logArgs = [ "Error requesting %j: %s", src, error ];
+          isError = true;
+        } else if (!res) {
+          logArgs = [ "Empty response for %j", src ];
+          isError = true;
+        } else if (res.statusCode === 304) {
+          logArgs = [ "%s >> up to date", dest ];
+        } else if (res.statusCode === 200) {
+          doDownload = true;
+        } else {
+          logArgs = [ "Unexpected response for %j: %s", url, res.statusCode ];
+          isError = true;
+        }
+
+        if (logArgs) {
+          var message = util.format.apply(util, logArgs);
+          if (isError) {
+            grunt.log.error(message);
+          } else {
+            grunt.log.writeln(message);
+          }
+        }
+
+        if (isError || !doDownload) {
           doneCallback();
           return;
         }
 
+        var file = fs.createWriteStream(dest);
+        file.on("error", function(e) {
+          grunt.log.error(util.format("Error writing to %j: %s", dest, e));
+          doneCallback();
+        });
+
         res
-          .on('data', function (chunk) {
-            file.write(chunk);
-          })
           .on('error', function (err) {
-            grunt.log.error("AWS error for file: " + dest);
+            grunt.log.error(util.format("Error reading %j: %s", src, err));
             doneCallback();
-            return;
           })
           .on('end', function () {
-            file.end();
             grunt.log.write( dest + " " );
             grunt.log.ok( "downloaded" );
             doneCallback();
           });
+
+        res.pipe(file);
       });
 
     }
