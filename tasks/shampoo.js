@@ -18,6 +18,7 @@ var request = require("request"),
     fs = require('fs'),
     path = require('path'),
     util = require('util'),
+    querystring = require('querystring'),
     mkdirp = require('mkdirp'),
     _ = require('lodash');
 
@@ -359,6 +360,34 @@ module.exports = function( grunt ) {
       };
     }
 
+    function createRequestId() {
+      return Date.now().toString(36) +
+        (Math.random() * 9007199254740992).toString(36);
+    }
+
+    function createToken(secret, key, requestId) {
+      return sha256("" + secret + key + requestId);
+    }
+
+    function createApiUrl(options, requestId) {
+      var url = [
+          options.https ? "https" : "http",
+          "://",
+          options.domain,
+          "/api/v",
+          options.api,
+          "/",
+          options.query
+        ].join("");
+
+      var queryParams = _.merge({
+          requestId: requestId,
+          token: createToken(options.secret, options.key, requestId)
+        }, options.params || {});
+
+      return url + "?" + querystring.stringify(queryParams);
+    }
+
     var done = this.async();
 
     var optionResult = getOptions();
@@ -368,14 +397,7 @@ module.exports = function( grunt ) {
     }
     var options = optionResult.options;
 
-    var requestId = (new Date()).getTime() + "" + Math.floor(Math.random()*10000000);
-    var token = sha256( options.secret + options.key + requestId );
-
-    var url = "http://" + options.domain + "/api/v" + options.api + "/" + options.query + "?token=" + token + "&requestId=" + requestId;
-
-    if (options.params) {
-      url += "&" + options.params;
-    }
+    var url = createApiUrl(options, createRequestId());
 
     // Create directory if doesn't exist
     if(options.mediaOut && !fs.existsSync(options.mediaOut)){
