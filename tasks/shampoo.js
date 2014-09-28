@@ -41,6 +41,29 @@ module.exports = function( grunt ) {
       ]));
     }
 
+    function isMediaAssetUrl(assetUrl) {
+      // a URL is a media asset URL if its scheme/protocol is http or https,
+      // and its hostname is a subdomain of amazonaws.com.
+      return Boolean(
+        assetUrl &&
+        /^https?:$/i .test(assetUrl.protocol) &&
+        /\.amazonaws\.com$/i .test(assetUrl.hostname)
+      );
+    }
+
+    function getMediaAssetPath(assetUrlString) {
+      var assetUrl;
+      try {
+        assetUrl = url.parse(assetUrlString);
+        if (isMediaAssetUrl(assetUrl)) {
+          return assetUrl.pathname.charAt(0) === "/" ?
+            assetUrl.pathname.slice(1) :
+            assetUrl.pathname;
+        }
+      } catch (error) { } // url.parse failed, so just fall through to return null
+      return null;
+    }
+
     function getMediaAssets( obj, mediaCwd ) {
       
       var toCheck = [ obj ],
@@ -71,29 +94,6 @@ module.exports = function( grunt ) {
       }
 
       return Object.keys(remotePaths);
-    }
-
-    function isMediaAssetUrl(assetUrl) {
-      // a URL is a media asset URL if its scheme/protocol is http or https,
-      // and its hostname is a subdomain of amazonaws.com.
-      return Boolean(
-        assetUrl &&
-        /^https?:$/i .test(assetUrl.protocol) &&
-        /\.amazonaws\.com$/i .test(assetUrl.hostname)
-      );
-    }
-
-    function getMediaAssetPath(assetUrlString) {
-      var assetUrl;
-      try {
-        assetUrl = url.parse(assetUrlString);
-        if (isMediaAssetUrl(assetUrl)) {
-          return assetUrl.pathname.charAt(0) === "/" ?
-            assetUrl.pathname.slice(1) :
-            assetUrl.pathname;
-        }
-      } catch (error) { } // url.parse failed, so just fall through to return null
-      return null;
     }
 
     function requestJson(url, options, done) {
