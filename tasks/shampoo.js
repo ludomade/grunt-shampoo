@@ -263,7 +263,7 @@ module.exports = function( grunt ) {
             doDownload = false;
 
         if (err) {
-          logArgs = [ "Error requesting %j: %s", src, error ];
+          logArgs = [ "Error requesting %j: %s", src, err ];
           isError = true;
         } else if (!res) {
           logArgs = [ "Empty response for %j", src ];
