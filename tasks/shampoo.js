@@ -264,7 +264,7 @@ module.exports = function( grunt ) {
 
         logMkdirp(path.dirname(localPath), function (error) {
           if (!error) {
-            downloadFile(client, localPath, remotePath, localHash, doneCallback);
+            downloadFile(client, remotePath, localPath, localHash, doneCallback);
           }
         });
       });
@@ -279,7 +279,7 @@ module.exports = function( grunt ) {
 
     }
 
-    function downloadFile(client, dest, src, etag, doneCallback) {
+    function downloadFile(client, src, dest, etag, doneCallback) {
       var requestHeaders = { };
 
       if (etag) {
