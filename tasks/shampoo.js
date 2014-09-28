@@ -181,19 +181,6 @@ module.exports = function( grunt ) {
 
       var mediaAssets = [];
 
-      //if media doesn't end in "/", add it in.
-      if( options.mediaOut.substring( options.mediaOut.length - 1 ) !== "/" ) {
-        options.mediaOut += "/";
-      }
-
-      if( options.mediaCwd !== "" ) {
-        if ( options.mediaCwd.substring( options.mediaCwd.length - 1 ) !== "/" ) {
-            options.mediaCwd += "/";
-        }
-      } else {
-        options.mediaCwd = options.mediaOut;
-      }
-
       client = makeClient( options.aws );
       mediaAssets = getMediaAssets( body, mediaAssets, options.mediaCwd );
 
@@ -315,6 +302,22 @@ module.exports = function( grunt ) {
       return query.indexOf("dump/zip/") === 0;
     }
 
+    function normalizeDir(path) {
+      // TODO: change path string operations to use path lib, and make this
+      // function unnecessary
+      if (path == null) {
+        return null;
+      }
+      path = String(path);
+      if (path === "") {
+        return "./";
+      }
+      if (path.slice(-1) !== "/") {
+        return path + "/";
+      }
+      return path;
+    }
+
     function getOptions() {
       // Mix in default options, .shampoorc file
       var options = rc("shampoo", this.options({
@@ -354,6 +357,13 @@ module.exports = function( grunt ) {
           "The query %j returns a zip file. This requires the 'zipOut' option to be set.",
           options.query
         ));
+      }
+
+      options.mediaOut = normalizeDir(options.mediaOut);
+      if (options.mediaCwd == null) {
+        options.mediaCwd = options.mediaOut;
+      } else {
+        options.mediaCwd = normalizeDir(options.mediaCwd);
       }
 
       return {
