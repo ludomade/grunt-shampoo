@@ -247,9 +247,9 @@ module.exports = function( grunt ) {
               for(var key in log) {
                 var unzippedFile = path.join(options.zipOut, log[key].deflated);
 
-                fs.readFile( unzippedFile, function ( err, data ) {
-                  if (err) {
-                    grunt.log.error("Error reading %j: %s", unzippedFile, err);
+                fs.readFile( unzippedFile, function ( error, data ) {
+                  if (error) {
+                    grunt.log.error("Error reading %j: %s", unzippedFile, error);
                   } else {
                     var body = tryParseJson(data);
                     if (body) {
@@ -322,9 +322,9 @@ module.exports = function( grunt ) {
       var localHash = null;
 
       grunt.verbose.writeln("Verifying %j -> %j", remotePath, localPath);
-      fs.readFile( localPath, function ( err, data ) {
-        if (err) {
-          grunt.verbose.error("Etag calculation of local file failed: %s", err);
+      fs.readFile( localPath, function ( error, data ) {
+        if (error) {
+          grunt.verbose.error("Etag calculation of local file failed: %s", error);
         } else {
           localHash = crypto.createHash('md5').update(data).digest('hex');
         }
@@ -356,17 +356,17 @@ module.exports = function( grunt ) {
         requestHeaders["If-None-Match"] = etag;
       }
 
-      client.getFile(remotePath, requestHeaders, function (err, res) {
-        if (responseOk(remotePath, err, res, HTTP_NOT_MODIFIED)) {
+      client.getFile(remotePath, requestHeaders, function (error, res) {
+        if (responseOk(remotePath, error, res, HTTP_NOT_MODIFIED)) {
           var file = fs.createWriteStream(localPath);
-          file.on("error", function(e) {
-            logError("Error writing: %s", e);
+          file.on("error", function (error) {
+            logError("Error writing: %s", error);
             callback();
           });
 
           res
-            .on('error', function (err) {
-              logError("Error reading %j: %s", remotePath, err);
+            .on('error', function (error) {
+              logError("Error reading %j: %s", remotePath, error);
               callback();
             })
             .on('end', function () {
