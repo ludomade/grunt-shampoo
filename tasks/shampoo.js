@@ -356,15 +356,15 @@ module.exports = function( grunt ) {
         requestHeaders["If-None-Match"] = etag;
       }
 
-      client.getFile(remotePath, requestHeaders, function (error, res) {
-        if (responseOk(remotePath, error, res, HTTP_NOT_MODIFIED)) {
+      client.getFile(remotePath, requestHeaders, function (error, response) {
+        if (responseOk(remotePath, error, response, HTTP_NOT_MODIFIED)) {
           var file = fs.createWriteStream(localPath);
           file.on("error", function (error) {
             logError("Error writing: %s", error);
             callback();
           });
 
-          res
+          response
             .on('error', function (error) {
               logError("Error reading %j: %s", remotePath, error);
               callback();
@@ -374,7 +374,7 @@ module.exports = function( grunt ) {
               callback();
             });
 
-          res.pipe(file);
+          response.pipe(file);
         } else {
           callback();
         }
