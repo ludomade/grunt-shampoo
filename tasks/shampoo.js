@@ -36,7 +36,6 @@ module.exports = function( grunt ) {
   grunt.registerMultiTask( "shampoo", "Retrieve content from the Shampoo CMS API on shampoo.io.", function() {
 
     var thisTask = this;
-    var gruntFinishTask = this.async();
 
     function createPath(path, options, callback) {
       if (typeof options === 'function') {
@@ -180,7 +179,7 @@ module.exports = function( grunt ) {
       return Object.keys(remotePaths);
     }
 
-    function requestJson(url, options) {
+    function requestJson(url, options, callback) {
       grunt.verbose.writeln("Downloading JSON");
 
       request(url, function( error, response, text ) {
@@ -190,22 +189,17 @@ module.exports = function( grunt ) {
         }
 
         if (jsonContent && options.out) {
+          writeJsonFile( options.out, jsonContent );
+
           if( options.mediaOut != null ) {
 
-            saveMedia(options, jsonContent);
-
-          } else {
-
-            writeJsonFile( options.out, jsonContent );
-            gruntFinishTask();
+            saveMedia(options, jsonContent, callback);
+            // prevent falling through to callback            
             return;
 
           }
         }
-
-        // we reach here if request failed, json parse failed, or if options.out
-        // is not set
-        gruntFinishTask();
+        callback();
       });
 
     }
@@ -214,14 +208,14 @@ module.exports = function( grunt ) {
       return ZIP_FILE_NAME_PREFIX + Date.now() + ".zip";
     }
 
-    function requestZip(url, options) {
+    function requestZip(url, options, callback) {
 
       var zipPath = path.join(
         options.zipOut, ZIP_FOLDER_NAME, generateZipFileName());
 
       createPath(path.dirname(zipPath), null, function (mkdirError) {
         if (mkdirError) {
-          gruntFinishTask(false);
+          callback();
           return;
         }
 
@@ -238,16 +232,27 @@ module.exports = function( grunt ) {
               //on extraction of the zip, check if mediaOut is set, if so, loop through all the unzipped files, and grab down the neccesary media.
               if(options.mediaOut == null) {
                 // if not, we're done
-                gruntFinishTask();
+                callback();
                 return;
+              }
+
+              var operations = 0;
+
+              function componentFileComplete() {
+                operations--;
+                if (operations === 0) {
+                  callback();
+                }
               }
 
               for(var key in log) {
                 var unzippedFile = path.join(options.zipOut, log[key].deflated);
 
+                operations++;
                 fs.readFile( unzippedFile, function ( error, text ) {
                   if (error) {
                     grunt.log.error("Error reading %j: %s", unzippedFile, error);
+                    componentFileComplete();
                   } else {
                     var jsonContent = tryParseJson(text, unzippedFile);
                     if (jsonContent) {
@@ -255,8 +260,7 @@ module.exports = function( grunt ) {
                       // zipOut, as json files get written to options.out
                       var newOptions = _.merge({}, options, { out: unzippedFile });
 
-                      saveMedia(newOptions, jsonContent);
-                      return;
+                      saveMedia(newOptions, jsonContent, componentFileComplete);
                     }
                   }
                 });
@@ -267,14 +271,14 @@ module.exports = function( grunt ) {
 
             unzipper.on("error", function(error) {
               grunt.log.error("Error unzipping file %j: %s", zipPath, error);
-              gruntFinishTask(false);
+              callback();
             });
 
             unzipper.extract({
               path: options.zipOut
             });
           } else {
-            gruntFinishTask(false);
+            callback();
           }
 
         }).pipe(fs.createWriteStream(zipPath));
@@ -283,7 +287,7 @@ module.exports = function( grunt ) {
 
     }
 
-    function saveMedia(options, jsonContent) {
+    function saveMedia(options, jsonContent, callback) {
 
       var mediaAssets = getMediaAssets( jsonContent, options.mediaCwd );
       var client = makeClient( options.aws );
@@ -301,8 +305,7 @@ module.exports = function( grunt ) {
 
       var fillQueue = function() {
         if (mediaAssets.length === 0 && loadCounter === 0) {
-          writeJsonFile( options.out, jsonContent );
-          gruntFinishTask();
+          callback();
         } else {
           while (mediaAssets.length > 0 && loadCounter < options.maxConnections) {
             loadCounter++;
@@ -390,17 +393,17 @@ module.exports = function( grunt ) {
 
     }
 
-    function requestFiles(options) {
+    function requestFiles(options, callback) {
       grunt.log.subhead( "Retrieving files..." );
       var url = createApiUrl(options, createRequestId());
       grunt.verbose.writeln("Url is %j", url);
 
       if (isZipQuery(options.query)) {
         grunt.verbose.writeln("Zip job");
-        requestZip(url, options);
+        requestZip(url, options, callback);
       } else {
         grunt.verbose.writeln("JSON job");
-        requestJson(url, options);
+        requestJson(url, options, callback);
       }
     }
 
@@ -507,13 +510,14 @@ module.exports = function( grunt ) {
     function main() {
       var optionResult = getOptions();
       var messagesString = optionResult.messages.join("\n");
+      var callback = thisTask.async();
 
       if (optionResult.ok) {
         grunt.log.writeln(messagesString);
-        requestFiles(optionResult.options);
+        requestFiles(optionResult.options, callback);
       } else {
         grunt.log.error(messagesString);
-        gruntFinishTask(false);
+        callback(false);
       }
       
     }
