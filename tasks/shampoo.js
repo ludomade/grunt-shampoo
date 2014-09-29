@@ -257,8 +257,11 @@ module.exports = function( grunt ) {
       var localPath = path.join(mediaOut, remotePath);
       var localHash = null;
 
+      grunt.verbose.writeln("Verifying %j -> %j", remotePath, localPath);
       fs.readFile( localPath, function ( err, data ) {
-        if (!err) {
+        if (err) {
+          grunt.verbose.error("Etag calculation of local file failed: %s", err);
+        } else {
           localHash = crypto.createHash('md5').update(data).digest('hex');
         }
 
@@ -292,7 +295,10 @@ module.exports = function( grunt ) {
         grunt.log.ok.apply(grunt.log, arguments);
       }
 
+      grunt.verbose.writeln("S3 GET %j", src);
+
       if (etag) {
+        grunt.verbose.writeln("If-None-Match: %s", etag);
         requestHeaders["If-None-Match"] = etag;
       }
 
