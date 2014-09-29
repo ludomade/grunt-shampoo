@@ -211,9 +211,8 @@ module.exports = function( grunt ) {
 
     }
 
-    function saveMedia(options, jsonContent, callback) {
+    function saveMedia(options, mediaAssets, callback) {
 
-      var mediaAssets = getMediaAssets( jsonContent, options.mediaCwd );
       var client = makeClient( options.aws );
 
       grunt.log.subhead( "Retrieving files..." );
