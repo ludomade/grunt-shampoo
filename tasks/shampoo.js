@@ -164,9 +164,9 @@ module.exports = function( grunt ) {
                 keyPath, value, thing[key]
               );
 
-              // record the remote path relative to its root downloading
+              // record the remote path relative to its root.
               // setting it as an object property means dupes are naturally 
-              // eliminated
+              // eliminated.
               remotePaths[assetPath] = true;
             }
           } else {
