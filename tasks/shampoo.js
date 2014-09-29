@@ -360,17 +360,20 @@ module.exports = function( grunt ) {
         if (responseOk(remotePath, error, response, HTTP_NOT_MODIFIED)) {
           var file = fs.createWriteStream(localPath);
           file.on("error", function (error) {
-            logError("Error writing: %s", error);
+            grunt.log.write(localPath);
+            grunt.log.error("Error writing: %s", error);
             callback();
           });
 
           response
             .on('error', function (error) {
-              logError("Error reading %j: %s", remotePath, error);
+              grunt.log.write(localPath);
+              grunt.log.error("Error reading %j: %s", remotePath, error);
               callback();
             })
             .on('end', function () {
-              logOk( "downloaded" );
+              grunt.log.write(localPath);
+              grunt.log.ok( "downloaded" );
               callback();
             });
 
