@@ -9,7 +9,6 @@
 'use strict';
 
 var request = require("request"),
-    sha256 = require("sha256"),
     fs = require("fs"),
     knox = require("knox"),
     crypto = require('crypto'),
@@ -19,9 +18,10 @@ var request = require("request"),
     path = require('path'),
     util = require('util'),
     url = require('url'),
-    querystring = require('querystring'),
     mkdirp = require('mkdirp'),
-    _ = require('lodash');
+    _ = require('lodash'),
+
+    shampooApi = require('./lib/shampoo-api');
 
 var HTTP_OK = 200,
     HTTP_NOT_MODIFIED = 304;
@@ -402,20 +402,16 @@ module.exports = function( grunt ) {
     function requestFiles(options, callback) {
       grunt.log.subhead( "Retrieving content..." );
 
-      var url = createApiUrl(options, createRequestId());
+      var url = shampooApi.createApiUrl(options);
       grunt.verbose.writeln("Url is %j", url);
 
-      if (isZipQuery(options.query)) {
+      if (shampooApi.isZipQuery(options.query)) {
         grunt.verbose.writeln("Zip job");
         requestZip(url, options, callback);
       } else {
         grunt.verbose.writeln("JSON job");
         requestJson(url, options, callback);
       }
-    }
-
-    function isZipQuery(query) {
-      return query.indexOf("dump/zip/") === 0;
     }
 
     function getOptions() {
@@ -433,7 +429,7 @@ module.exports = function( grunt ) {
       var missing = { };
       var required = [ "key", "secret", "domain", "query", "out" ];
 
-      if (isZipQuery(options.query)) {
+      if (shampooApi.isZipQuery(options.query)) {
         required.push("zipOut");
       }
 
@@ -486,33 +482,6 @@ module.exports = function( grunt ) {
       };
     }
 
-    function createRequestId() {
-      return Date.now().toString(36) +
-        (Math.random() * 9007199254740992).toString(36);
-    }
-
-    function createToken(secret, key, requestId) {
-      return sha256("" + secret + key + requestId);
-    }
-
-    function createApiUrl(options, requestId) {
-      var url = [
-          options.https ? "https" : "http",
-          "://",
-          options.domain,
-          "/api/v",
-          options.api,
-          "/",
-          options.query
-        ].join("");
-
-      var queryParams = _.merge({
-          requestId: requestId,
-          token: createToken(options.secret, options.key, requestId)
-        }, options.params || {});
-
-      return url + "?" + querystring.stringify(queryParams);
-    }
 
     function main() {
       var optionResult = getOptions();
