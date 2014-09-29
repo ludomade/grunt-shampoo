@@ -189,7 +189,7 @@ module.exports = function( grunt ) {
         }
 
         if (jsonContent && options.out) {
-          if( options.mediaOut ) {
+          if( options.mediaOut != null ) {
 
             saveMedia(options, jsonContent, done);
 
