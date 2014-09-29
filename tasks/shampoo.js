@@ -67,7 +67,7 @@ module.exports = function( grunt ) {
         [ "" ];
     }
 
-    function responseOk(requestName, error, response, allowExtraStatusCodes) {
+    function isResponseOk(error, response, requestName, allowExtraStatusCodes) {
       var allowStatusCodes = [ HTTP_OK ].concat(castToArray(allowExtraStatusCodes)),
         formatArgs = formatArgsPrefix(requestName),
         ok = true;
@@ -91,7 +91,7 @@ module.exports = function( grunt ) {
       return ok;
     }
 
-    function tryParseJson(requestName, text) {
+    function tryParseJson(text, requestName) {
       try {
         return JSON.parse(text);
       } catch (error) {
@@ -185,8 +185,8 @@ module.exports = function( grunt ) {
 
       request(url, function( error, response, text ) {
         var jsonContent;
-        if (responseOk(url, error, response)) {
-          jsonContent = tryParseJson(text);
+        if (isResponseOk(error, response, url)) {
+          jsonContent = tryParseJson(text, url);
         }
 
         if (jsonContent && options.out) {
@@ -228,7 +228,7 @@ module.exports = function( grunt ) {
         grunt.verbose.writeln("Downloading zip");
         request(url, function(error, response) {
 
-          if (responseOk(url, error, response)) {
+          if (isResponseOk(error, response, url)) {
             var unzipper = new DecompressZip(zipPath);
 
             unzipper.on("extract", function (log) {
@@ -249,7 +249,7 @@ module.exports = function( grunt ) {
                   if (error) {
                     grunt.log.error("Error reading %j: %s", unzippedFile, error);
                   } else {
-                    var jsonContent = tryParseJson(text);
+                    var jsonContent = tryParseJson(text, unzippedFile);
                     if (jsonContent) {
                       // make a new copy of options, with out set to match
                       // zipOut, as json files get written to options.out
@@ -355,7 +355,7 @@ module.exports = function( grunt ) {
       }
 
       client.getFile(remotePath, requestHeaders, function (error, response) {
-        if (responseOk(remotePath, error, response, HTTP_NOT_MODIFIED)) {
+        if (isResponseOk(error, response, remotePath, HTTP_NOT_MODIFIED)) {
           var file = fs.createWriteStream(localPath);
           file.on("error", function (error) {
             grunt.log.write(localPath);
