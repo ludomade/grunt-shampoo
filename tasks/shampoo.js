@@ -282,6 +282,16 @@ module.exports = function( grunt ) {
     function downloadFile(client, src, dest, etag, doneCallback) {
       var requestHeaders = { };
 
+      function logError() {
+        grunt.log.write( dest + " " );
+        grunt.log.error.apply(grunt.log, arguments);
+      }
+
+      function logOk() {
+        grunt.log.write( dest + " " );
+        grunt.log.ok.apply(grunt.log, arguments);
+      }
+
       if (etag) {
         requestHeaders["If-None-Match"] = etag;
       }
@@ -290,16 +300,16 @@ module.exports = function( grunt ) {
         var stop = false;
 
         if (err) {
-          grunt.log.error("Error requesting %j: %s", src, err);
+          logError("Error requesting %j: %s", src, err);
           stop = true;
         } else if (!res) {
-          grunt.log.error("Error requesting %j", src);
+          logError("Error requesting %j", src);
           stop = true;
         } else if (res.statusCode === HTTP_NOT_MODIFIED) {
-          grunt.log.writeln("%s >> up to date", dest);
+          logOk("up to date");
           stop = true;
         } else if (res.statusCode !== HTTP_OK) {
-          grunt.log.error("Unexpected response for %j: %s", url, res.statusCode);
+          logError("Unexpected response for %j: %s", src, res.statusCode);
           stop = true;
         }
 
@@ -310,18 +320,17 @@ module.exports = function( grunt ) {
 
         var file = fs.createWriteStream(dest);
         file.on("error", function(e) {
-          grunt.log.error("Error writing to %j: %s", dest, e);
+          logError("Error writing: %s", e);
           doneCallback();
         });
 
         res
           .on('error', function (err) {
-            grunt.log.error("Error reading %j: %s", src, err);
+            logError("Error reading %j: %s", src, err);
             doneCallback();
           })
           .on('end', function () {
-            grunt.log.write( dest + " " );
-            grunt.log.ok( "downloaded" );
+            logOk( "downloaded" );
             doneCallback();
           });
 
