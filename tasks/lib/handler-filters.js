@@ -62,16 +62,16 @@ function createHandlerFilter(grunt) {
 		},
 
 		expectJsonResponse: function (logPrefix, handler) {
-			return logErrors(logPrefix,
+			return _expectHttpOk(
 				_expectJsonAtArgument(2,
-					_expectHttpOk(handler)
+					logErrors(logPrefix, handler)
 				)
 			);
 		},
 
 		expectJsonContents: function (logPrefix, handler) {
-			return logErrors(logPrefix,
-				_expectJsonAtArgument(1, handler)
+			return _expectJsonAtArgument(1,
+				logErrors(logPrefix, handler)
 			);
 		}
 	};
