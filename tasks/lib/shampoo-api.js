@@ -1,3 +1,5 @@
+"use strict";
+
 var sha256 = require("sha256"),
     querystring = require('querystring'),
     _ = require('lodash');
