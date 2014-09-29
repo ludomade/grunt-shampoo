@@ -226,7 +226,7 @@ module.exports = function( grunt ) {
         }
 
         grunt.verbose.writeln("Downloading zip");
-        request(url, function(error, response, body) {
+        request(url, function(error, response) {
 
           if (responseOk(url, error, response)) {
             var unzipper = new DecompressZip(zipPath);
