@@ -247,11 +247,11 @@ module.exports = function( grunt ) {
               for(var key in log) {
                 var unzippedFile = path.join(options.zipOut, log[key].deflated);
 
-                fs.readFile( unzippedFile, function ( error, data ) {
+                fs.readFile( unzippedFile, function ( error, text ) {
                   if (error) {
                     grunt.log.error("Error reading %j: %s", unzippedFile, error);
                   } else {
-                    var body = tryParseJson(data);
+                    var body = tryParseJson(text);
                     if (body) {
                       // make a new copy of options, with out set to match
                       // zipOut, as json files get written to options.out
@@ -322,11 +322,11 @@ module.exports = function( grunt ) {
       var localHash = null;
 
       grunt.verbose.writeln("Verifying %j -> %j", remotePath, localPath);
-      fs.readFile( localPath, function ( error, data ) {
+      fs.readFile( localPath, function ( error, text ) {
         if (error) {
           grunt.verbose.error("Etag calculation of local file failed: %s", error);
         } else {
-          localHash = crypto.createHash('md5').update(data).digest('hex');
+          localHash = crypto.createHash('md5').update(text).digest('hex');
         }
 
         createPath(path.dirname(localPath), function (error) {
