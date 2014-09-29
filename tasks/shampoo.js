@@ -158,7 +158,7 @@ module.exports = function( grunt ) {
               // rewrite the property in the JSON with the local path
               thing[key] = path.join(mediaCwd, assetPath);
 
-              grunt.verbose.writeln(
+              grunt.log.debug(
                 "Rewriting %s\n" +
                 "  old: %j\n" +
                 "  new: %j\n",
@@ -233,9 +233,7 @@ module.exports = function( grunt ) {
 
             unzipper.on("extract", function (log) {
 
-              // TODO: this should be debug, but take a pass over the whole
-              // code and decide what should be debug
-              grunt.verbose.writeln("%s extract log:\n%j", zipPath, log);
+              grunt.log.debug("%s extract log:\n%j", zipPath, log);
 
               //on extraction of the zip, check if mediaOut is set, if so, loop through all the unzipped files, and grab down the neccesary media.
               if(options.mediaOut == null) {
@@ -290,9 +288,9 @@ module.exports = function( grunt ) {
       var mediaAssets = getMediaAssets( jsonContent, options.mediaCwd );
       var client = makeClient( options.aws );
 
-      grunt.verbose.writeln("Media queue is:");
+      grunt.log.debug("Media queue is:");
       mediaAssets.forEach(function (p) {
-        grunt.verbose.writeln("  %j", p);
+        grunt.log.debug("  %j", p);
       });
 
       var loadCounter = 0;
@@ -321,10 +319,10 @@ module.exports = function( grunt ) {
       var localPath = path.join(mediaOut, remotePath);
       var localHash = null;
 
-      grunt.verbose.writeln("Verifying %j -> %j", remotePath, localPath);
+      grunt.log.debug("Verifying %j -> %j", remotePath, localPath);
       fs.readFile( localPath, function ( error, text ) {
         if (error) {
-          grunt.verbose.error("Etag calculation of local file failed: %s", error);
+          grunt.log.debug("Etag calculation of local file failed: %s", error);
         } else {
           localHash = crypto.createHash('md5').update(text).digest('hex');
         }
@@ -349,10 +347,10 @@ module.exports = function( grunt ) {
     function downloadFile(client, remotePath, localPath, etag, callback) {
       var requestHeaders = { };
 
-      grunt.verbose.writeln("S3 GET %j", remotePath);
+      grunt.log.debug("S3 GET %j", remotePath);
 
       if (etag) {
-        grunt.verbose.writeln("If-None-Match: %s", etag);
+        grunt.log.debug("If-None-Match: %s", etag);
         requestHeaders["If-None-Match"] = etag;
       }
 
