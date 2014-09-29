@@ -18,13 +18,13 @@ var request = require("request"),
     path = require('path'),
     util = require('util'),
     url = require('url'),
-    mkdirp = require('mkdirp'),
+    _mkdirp = require('mkdirp'),
     _ = require('lodash'),
 
-    shampooApi = require('./lib/shampoo-api');
+    shampooApi = require('./lib/shampoo-api'),
+    createHandlerFilter = require('./lib/handler-filters');
 
-var HTTP_OK = 200,
-    HTTP_NOT_MODIFIED = 304;
+var HTTP_NOT_MODIFIED = 304;
 
 var ZIP_FOLDER_NAME = "content-backups",
     ZIP_FILE_NAME_PREFIX = "content-dump-";
@@ -35,72 +35,20 @@ module.exports = function( grunt ) {
 
   grunt.registerMultiTask( "shampoo", "Retrieve content from the Shampoo CMS API on shampoo.io.", function() {
 
-    var thisTask = this;
+    var thisTask = this,
+        handlerFilter = createHandlerFilter(grunt);
 
-    function createPath(path, options, callback) {
+
+    function mkdirp(path, options, callback) {
       if (typeof options === 'function') {
         callback = options;
         options = null;
       }
-      mkdirp(path, options, function (error, created) {
-        if (error) {
-          grunt.log.error("Couldn't create %j: %s", path, error);
-        }
-        callback(error, created);
-      });
+      _mkdirp(path, options,
+        handlerFilter.logErrors("Couldn't create " + path, callback)
+      );
     }
 
-    function castToArray(thing) {
-      if (!thing) {
-        return [ ];
-      }
-      if (Array.isArray(thing)) {
-        return thing;
-      }
-      return [ thing ];
-    }
-
-    function formatArgsPrefix(prefix) {
-      return prefix ?
-        [ "%j: ", prefix ] :
-        [ "" ];
-    }
-
-    function isResponseOk(error, response, requestName, allowExtraStatusCodes) {
-      var allowStatusCodes = [ HTTP_OK ].concat(castToArray(allowExtraStatusCodes)),
-        formatArgs = formatArgsPrefix(requestName),
-        ok = true;
-
-      if (error) {
-        formatArgs[0] += "Request error: %s";
-        formatArgs.push(error);
-        ok = false;
-      } else if (!response) {
-        formatArgs[0] += "No response";
-        ok = false;
-      } else if (allowStatusCodes.indexOf(response.statusCode) < 0) {
-        formatArgs[0] += "Unexpected status code: %s";
-        formatArgs.push(response.statusCode);
-        ok = false;
-      }
-
-      if (!ok) {
-        grunt.log.error.apply(grunt.log, formatArgs);
-      }
-      return ok;
-    }
-
-    function tryParseJson(text, requestName) {
-      try {
-        return JSON.parse(text);
-      } catch (error) {
-        var formatArgs = formatArgsPrefix(requestName);
-        formatArgs[0] += "Error parsing JSON: %s";
-        formatArgs.push(error);
-        grunt.log.error.apply(grunt.log, formatArgs);
-        return null;
-      }
-    }
 
     function makeClient( options ) {
       return knox.createClient( _.pick(options, [
@@ -179,31 +127,6 @@ module.exports = function( grunt ) {
       return Object.keys(remotePaths);
     }
 
-    function requestJson(url, options, callback) {
-      grunt.verbose.writeln("Downloading JSON");
-
-      request(url, function( error, response, text ) {
-        var jsonContent;
-        if (isResponseOk(error, response, url)) {
-          jsonContent = tryParseJson(text, url);
-        }
-
-        if (jsonContent && options.out) {
-          writeJsonFile( options.out, jsonContent );
-
-          if( options.mediaOut != null ) {
-
-            saveMedia(options, jsonContent, callback);
-            // prevent falling through to callback            
-            return;
-
-          }
-        }
-        callback();
-      });
-
-    }
-
     function generateZipFileName() {
       return ZIP_FILE_NAME_PREFIX + Date.now() + ".zip";
     }
@@ -213,16 +136,20 @@ module.exports = function( grunt ) {
       var zipPath = path.join(
         options.zipOut, ZIP_FOLDER_NAME, generateZipFileName());
 
-      createPath(path.dirname(zipPath), null, function (mkdirError) {
+      mkdirp(path.dirname(zipPath), null, function (mkdirError) {
         if (mkdirError) {
           callback();
           return;
         }
 
         grunt.verbose.writeln("Downloading zip");
-        request(url, function(error, response) {
+        request(url, handlerFilter.expectHttpOk(url,
+          function (error) {
+            if (error) {
+              callback();
+              return;
+            }
 
-          if (isResponseOk(error, response, url)) {
             var unzipper = new DecompressZip(zipPath);
 
             unzipper.on("extract", function (log) {
@@ -249,21 +176,16 @@ module.exports = function( grunt ) {
                 var unzippedFile = path.join(options.zipOut, log[key].deflated);
 
                 waitingFiles++;
-                fs.readFile( unzippedFile, function ( error, text ) {
-                  if (error) {
-                    grunt.log.error("Error reading %j: %s", unzippedFile, error);
-                    componentFileComplete();
-                  } else {
-                    var jsonContent = tryParseJson(text, unzippedFile);
-                    if (jsonContent) {
-                      // make a new copy of options, with out set to match
-                      // zipOut, as json files get written to options.out
-                      var newOptions = _.merge({}, options, { out: unzippedFile });
 
-                      saveMedia(newOptions, jsonContent, componentFileComplete);
+                fs.readFile(unzippedFile, handlerFilter.expectJsonContents(unzippedFile,
+                  function (error, jsonContent) {
+                    if (error) {
+                      componentFileComplete();
+                    } else {
+                      processJson(jsonContent, unzippedFile, options, componentFileComplete);
                     }
                   }
-                });
+                ));
 
                 if (waitingFiles === 0) {
                   grunt.log.error("Empty zip file: %j", zipPath);
@@ -282,11 +204,8 @@ module.exports = function( grunt ) {
             unzipper.extract({
               path: options.zipOut
             });
-          } else {
-            callback();
           }
-
-        }).pipe(fs.createWriteStream(zipPath));
+        )).pipe(fs.createWriteStream(zipPath));
 
       });
 
@@ -337,7 +256,7 @@ module.exports = function( grunt ) {
           localHash = crypto.createHash('md5').update(text).digest('hex');
         }
 
-        createPath(path.dirname(localPath), function (error) {
+        mkdirp(path.dirname(localPath), function (error) {
           if (!error) {
             downloadFile(client, remotePath, localPath, localHash, callback);
           }
@@ -363,8 +282,13 @@ module.exports = function( grunt ) {
         requestHeaders["If-None-Match"] = etag;
       }
 
-      client.getFile(remotePath, requestHeaders, function (error, response) {
-        if (isResponseOk(error, response, remotePath, HTTP_NOT_MODIFIED)) {
+      client.getFile(remotePath, requestHeaders, handlerFilter.expectHttpOk(remotePath,
+        function (error, response) {
+          if (error) {
+            callback();
+            return;
+          }
+
           if (response.statusCode === HTTP_NOT_MODIFIED) {
             grunt.log.write("%s ", localPath);
             grunt.log.ok( "up to date" );
@@ -392,12 +316,36 @@ module.exports = function( grunt ) {
             });
 
           response.pipe(file);
-        } else {
-          callback();
         }
-      });
-
+      ));
     }
+
+
+    function processJson(jsonContent, outJsonFile, options, callback) {
+      var mediaAssets = getMediaAssets(jsonContent, options.mediaCwd);
+      if (outJsonFile) {
+        writeJsonFile(outJsonFile, jsonContent);
+        if (options.mediaOut != null) {
+          saveMedia(options, mediaAssets, callback);
+          return;
+        }
+      }
+      callback();
+    }
+
+
+    function requestJson(url, options, callback) {
+      request(url, handlerFilter.expectJsonResponse(url,
+        function (error, response, jsonContent) {
+          if (error) {
+            callback();
+          } else {
+            processJson(jsonContent, options.out, options, callback);
+          }
+        }
+      ));
+    }
+
 
     function requestFiles(options, callback) {
       grunt.log.subhead( "Retrieving content..." );
@@ -413,6 +361,7 @@ module.exports = function( grunt ) {
         requestJson(url, options, callback);
       }
     }
+
 
     function getOptions() {
       // Mix in default options, .shampoorc file
