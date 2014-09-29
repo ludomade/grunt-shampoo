@@ -356,6 +356,13 @@ module.exports = function( grunt ) {
 
       client.getFile(remotePath, requestHeaders, function (error, response) {
         if (isResponseOk(error, response, remotePath, HTTP_NOT_MODIFIED)) {
+          if (response.statusCode === HTTP_NOT_MODIFIED) {
+            grunt.log.write("%s ", localPath);
+            grunt.log.ok( "up to date" );
+            callback();
+            return;
+          }
+
           var file = fs.createWriteStream(localPath);
           file.on("error", function (error) {
             grunt.log.write("%s ", localPath);
