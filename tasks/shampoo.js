@@ -358,19 +358,19 @@ module.exports = function( grunt ) {
         if (isResponseOk(error, response, remotePath, HTTP_NOT_MODIFIED)) {
           var file = fs.createWriteStream(localPath);
           file.on("error", function (error) {
-            grunt.log.write(localPath);
+            grunt.log.write("%s ", localPath);
             grunt.log.error("Error writing: %s", error);
             callback();
           });
 
           response
             .on('error', function (error) {
-              grunt.log.write(localPath);
+              grunt.log.write("%s ", localPath);
               grunt.log.error("Error reading %j: %s", remotePath, error);
               callback();
             })
             .on('end', function () {
-              grunt.log.write(localPath);
+              grunt.log.write("%s ", localPath);
               grunt.log.ok( "downloaded" );
               callback();
             });
