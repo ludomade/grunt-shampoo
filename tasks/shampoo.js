@@ -60,15 +60,16 @@ module.exports = function( grunt ) {
       return [ thing ];
     }
 
+    function formatArgsPrefix(prefix) {
+      return prefix ?
+        [ "%j: ", prefix ] :
+        [ "" ];
+    }
+
     function responseOk(requestName, error, response, allowExtraStatusCodes) {
       var allowStatusCodes = [ HTTP_OK ].concat(castToArray(allowExtraStatusCodes)),
-        formatArgs = [ "" ],
+        formatArgs = formatArgsPrefix(requestName),
         ok = true;
-
-      if (requestName) {
-        formatArgs[0] += "%j: ";
-        formatArgs.push(requestName);
-      }
 
       if (error) {
         formatArgs[0] += "Request error: %s";
@@ -87,6 +88,18 @@ module.exports = function( grunt ) {
         grunt.log.error.apply(grunt.log, formatArgs);
       }
       return ok;
+    }
+
+    function tryParseJson(requestName, text) {
+      try {
+        return JSON.parse(text);
+      } catch (error) {
+        var formatArgs = formatArgsPrefix(requestName);
+        formatArgs[0] += "Error parsing JSON: %s";
+        formatArgs.push(error);
+        grunt.log.error.apply(grunt.log, formatArgs);
+        return null;
+      }
     }
 
     function makeClient( options ) {
@@ -170,13 +183,9 @@ module.exports = function( grunt ) {
       grunt.verbose.writeln("Downloading JSON");
 
       request(url, function( error, response, body ) {
-        var jsonContent = null;
+        var jsonContent;
         if (responseOk(url, error, response)) {
-          try {
-            jsonContent = JSON.parse(body);
-          } catch (parseError) {
-            grunt.log.error("Error parsing %j as JSON: %s", url, parseError);
-          }
+          jsonContent = tryParseJson(body);
         }
 
         if (jsonContent && options.out) {
