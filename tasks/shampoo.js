@@ -236,11 +236,11 @@ module.exports = function( grunt ) {
                 return;
               }
 
-              var operations = 0;
+              var waitingFiles = 0;
 
               function componentFileComplete() {
-                operations--;
-                if (operations === 0) {
+                waitingFiles--;
+                if (waitingFiles <= 0) {
                   callback();
                 }
               }
@@ -248,7 +248,7 @@ module.exports = function( grunt ) {
               for(var key in log) {
                 var unzippedFile = path.join(options.zipOut, log[key].deflated);
 
-                operations++;
+                waitingFiles++;
                 fs.readFile( unzippedFile, function ( error, text ) {
                   if (error) {
                     grunt.log.error("Error reading %j: %s", unzippedFile, error);
@@ -264,6 +264,11 @@ module.exports = function( grunt ) {
                     }
                   }
                 });
+
+                if (waitingFiles === 0) {
+                  grunt.log.error("Empty zip file: %j", zipPath);
+                  callback();
+                }
 
               }
 
