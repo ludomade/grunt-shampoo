@@ -183,10 +183,10 @@ module.exports = function( grunt ) {
     function requestJson(url, options) {
       grunt.verbose.writeln("Downloading JSON");
 
-      request(url, function( error, response, body ) {
+      request(url, function( error, response, text ) {
         var jsonContent;
         if (responseOk(url, error, response)) {
-          jsonContent = tryParseJson(body);
+          jsonContent = tryParseJson(text);
         }
 
         if (jsonContent && options.out) {
@@ -251,13 +251,13 @@ module.exports = function( grunt ) {
                   if (error) {
                     grunt.log.error("Error reading %j: %s", unzippedFile, error);
                   } else {
-                    var body = tryParseJson(text);
-                    if (body) {
+                    var jsonContent = tryParseJson(text);
+                    if (jsonContent) {
                       // make a new copy of options, with out set to match
                       // zipOut, as json files get written to options.out
                       var newOptions = _.merge({}, options, { out: unzippedFile });
 
-                      saveMedia(newOptions, body);
+                      saveMedia(newOptions, jsonContent);
                       return;
                     }
                   }
@@ -285,9 +285,9 @@ module.exports = function( grunt ) {
 
     }
 
-    function saveMedia(options, body) {
+    function saveMedia(options, jsonContent) {
 
-      var mediaAssets = getMediaAssets( body, options.mediaCwd );
+      var mediaAssets = getMediaAssets( jsonContent, options.mediaCwd );
       var client = makeClient( options.aws );
 
       grunt.verbose.writeln("Media queue is:");
@@ -303,7 +303,7 @@ module.exports = function( grunt ) {
 
       var fillQueue = function() {
         if (mediaAssets.length === 0 && loadCounter === 0) {
-          writeJsonFile( options.out, body );
+          writeJsonFile( options.out, jsonContent );
           gruntFinishTask();
         } else {
           while (mediaAssets.length > 0 && loadCounter < options.maxConnections) {
@@ -338,11 +338,11 @@ module.exports = function( grunt ) {
 
     }
 
-    function writeJsonFile(out, body) {
+    function writeJsonFile(out, object) {
       grunt.log.subhead( "Retrieving content..." );
       grunt.log.write( out + " ");
       grunt.log.ok( "saved" );
-      grunt.file.write(out, JSON.stringify(body, null, '\t'));
+      grunt.file.write(out, JSON.stringify(object, null, '\t'));
 
     }
 
