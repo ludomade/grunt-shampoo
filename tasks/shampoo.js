@@ -58,9 +58,14 @@ module.exports = function( grunt ) {
       try {
         assetUrl = url.parse(assetUrlString);
         if (isMediaAssetUrl(assetUrl)) {
-          return assetUrl.pathname.charAt(0) === "/" ?
-            assetUrl.pathname.slice(1) :
-            assetUrl.pathname;
+          var pathname = assetUrl.pathname;
+          if (pathname.charAt(0) === "/") {
+            pathname = pathname.slice(1);
+          }
+          // url.parse automatically url-escapes characters, but we need to
+          // reverse that for passing to the knox client, as well as for saving
+          // locally
+          return decodeURI(pathname);
         }
       } catch (error) { } // url.parse failed, so just fall through to return null
       return null;
