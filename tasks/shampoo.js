@@ -128,7 +128,7 @@ module.exports = function( grunt ) {
     }
 
     function requestJson(url, options, done) {
-      grunt.verbose.write("Downloading JSON...");
+      grunt.verbose.writeln("Downloading JSON");
 
       request(url, function( error, response, body ) {
         var errorFormatArgs = null,
@@ -143,7 +143,7 @@ module.exports = function( grunt ) {
           try {
             jsonContent = JSON.parse(body);
           } catch (parseError) {
-            errorFormatArgs = [ "Error parsing %j as JSON: %s", url, parseError ];
+            grunt.log.error("Error parsing %j as JSON: %s", url, parseError);
           }
         }
 
@@ -190,7 +190,7 @@ module.exports = function( grunt ) {
           return;
         }
 
-        grunt.verbose.write("Downloading zip...");
+        grunt.verbose.writeln("Downloading zip");
         request(url, function(error, response, body) {
 
           // TODO: handle bads
