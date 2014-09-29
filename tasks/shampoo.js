@@ -401,22 +401,6 @@ module.exports = function( grunt ) {
       return query.indexOf("dump/zip/") === 0;
     }
 
-    function normalizeDir(path) {
-      // TODO: change path string operations to use path lib, and make this
-      // function unnecessary
-      if (path == null) {
-        return null;
-      }
-      path = String(path);
-      if (path === "") {
-        return "./";
-      }
-      if (path.slice(-1) !== "/") {
-        return path + "/";
-      }
-      return path;
-    }
-
     function getOptions() {
       // Mix in default options, .shampoorc file
       var options = rc("shampoo", thisTask.options({
@@ -459,11 +443,8 @@ module.exports = function( grunt ) {
         ));
       }
 
-      options.mediaOut = normalizeDir(options.mediaOut);
       if (options.mediaCwd == null) {
         options.mediaCwd = options.mediaOut;
-      } else {
-        options.mediaCwd = normalizeDir(options.mediaCwd);
       }
 
       var parsedMaxConnections = parseInt(options.maxConnections, 10);
