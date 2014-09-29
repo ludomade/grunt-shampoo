@@ -346,19 +346,19 @@ module.exports = function( grunt ) {
 
     }
 
-    function downloadFile(client, src, dest, etag, callback) {
+    function downloadFile(client, remotePath, localPath, etag, callback) {
       var requestHeaders = { };
 
-      grunt.verbose.writeln("S3 GET %j", src);
+      grunt.verbose.writeln("S3 GET %j", remotePath);
 
       if (etag) {
         grunt.verbose.writeln("If-None-Match: %s", etag);
         requestHeaders["If-None-Match"] = etag;
       }
 
-      client.getFile(src, requestHeaders, function (err, res) {
-        if (responseOk(src, err, res, HTTP_NOT_MODIFIED)) {
-          var file = fs.createWriteStream(dest);
+      client.getFile(remotePath, requestHeaders, function (err, res) {
+        if (responseOk(remotePath, err, res, HTTP_NOT_MODIFIED)) {
+          var file = fs.createWriteStream(localPath);
           file.on("error", function(e) {
             logError("Error writing: %s", e);
             callback();
@@ -366,7 +366,7 @@ module.exports = function( grunt ) {
 
           res
             .on('error', function (err) {
-              logError("Error reading %j: %s", src, err);
+              logError("Error reading %j: %s", remotePath, err);
               callback();
             })
             .on('end', function () {
