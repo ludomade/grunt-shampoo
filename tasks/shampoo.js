@@ -297,6 +297,8 @@ module.exports = function( grunt ) {
       var mediaAssets = getMediaAssets( jsonContent, options.mediaCwd );
       var client = makeClient( options.aws );
 
+      grunt.log.subhead( "Retrieving files..." );
+
       grunt.log.debug("Media queue is:");
       mediaAssets.forEach(function (p) {
         grunt.log.debug("  %j", p);
@@ -345,7 +347,6 @@ module.exports = function( grunt ) {
     }
 
     function writeJsonFile(out, object) {
-      grunt.log.subhead( "Retrieving content..." );
       grunt.log.write( out + " ");
       grunt.log.ok( "saved" );
       grunt.file.write(out, JSON.stringify(object, null, '\t'));
@@ -399,7 +400,8 @@ module.exports = function( grunt ) {
     }
 
     function requestFiles(options, callback) {
-      grunt.log.subhead( "Retrieving files..." );
+      grunt.log.subhead( "Retrieving content..." );
+
       var url = createApiUrl(options, createRequestId());
       grunt.verbose.writeln("Url is %j", url);
 
