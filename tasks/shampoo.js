@@ -220,7 +220,7 @@ module.exports = function( grunt ) {
 
       createPath(path.dirname(zipPath), null, function (mkdirError) {
         if (mkdirError) {
-          done(false);
+          done();
           return;
         }
 
@@ -232,41 +232,50 @@ module.exports = function( grunt ) {
 
             unzipper.on("extract", function (log) {
 
+              // TODO: this should be debug, but take a pass over the whole
+              // code and decide what should be debug
+              grunt.verbose.writeln("%s extract log:\n%j", zipPath, log);
+
               //on extraction of the zip, check if mediaOut is set, if so, loop through all the unzipped files, and grab down the neccesary media.
-              if(options.mediaOut !== "") {
-
-                for(var key in log) {
-                  var unzippedFile = options.zipOut + log[key].deflated;
-
-                  fs.readFile( unzippedFile, function ( err, data ) {
-
-                    var body = JSON.parse(data);
-                    //override the out to match zipOut, as json files get written to options.out
-                    options.out = unzippedFile;
-                    saveMedia(options, body, done);
-
-                  });
-
-                }
-
-              } else {
-
+              if(options.mediaOut == null) {
                 done();
+                return;
+              }
+
+              for(var key in log) {
+                var unzippedFile = path.join(options.zipOut, log[key].deflated);
+
+                fs.readFile( unzippedFile, function ( err, data ) {
+                  if (err) {
+                    grunt.log.error("Error reading %j: %s", unzippedFile, err);
+                  } else {
+                    var body = tryParseJson(data);
+                    if (body) {
+                      // make a new copy of options, with out set to match
+                      // zipOut, as json files get written to options.out
+                      var newOptions = _.merge({}, options, { out: unzippedFile });
+
+                      saveMedia(newOptions, body, done);
+                      return;
+                    }
+                  }
+                  done();
+                });
 
               }
 
             });
 
             unzipper.on("error", function(error) {
-              grunt.log.error("An error occurred unzipping the file %j: %s", zipPath, error);
-              done(false);
+              grunt.log.error("Error unzipping file %j: %s", zipPath, error);
+              done();
             });
 
             unzipper.extract({
               path: options.zipOut
             });
           } else {
-            done(false);
+            done();
           }
 
         }).pipe(fs.createWriteStream(zipPath));
