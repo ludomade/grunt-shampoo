@@ -37,6 +37,19 @@ module.exports = function( grunt ) {
 
     var thisTask = this;
 
+    function createPath(path, options, callback) {
+      if (typeof options === 'function') {
+        callback = options;
+        options = null;
+      }
+      mkdirp(path, options, function (error, created) {
+        if (error) {
+          grunt.log.error("Couldn't create %j: %s", path, error);
+        }
+        callback(error, created);
+      });
+    }
+
     function makeClient( options ) {
       return knox.createClient( _.pick(options, [
         'region', 'endpoint', 'port', 'key', 'secret', 'access', 'bucket', 'secure', 'headers', 'style'
@@ -171,7 +184,7 @@ module.exports = function( grunt ) {
       var zipPath = path.join(
         options.zipOut, ZIP_FOLDER_NAME, generateZipFileName());
 
-      logMkdirp(path.dirname(zipPath), null, function (mkdirError) {
+      createPath(path.dirname(zipPath), null, function (mkdirError) {
         if (mkdirError) {
           done(false);
           return;
@@ -270,7 +283,7 @@ module.exports = function( grunt ) {
           localHash = crypto.createHash('md5').update(data).digest('hex');
         }
 
-        logMkdirp(path.dirname(localPath), function (error) {
+        createPath(path.dirname(localPath), function (error) {
           if (!error) {
             downloadFile(client, remotePath, localPath, localHash, doneCallback);
           }
@@ -481,19 +494,6 @@ module.exports = function( grunt ) {
         }, options.params || {});
 
       return url + "?" + querystring.stringify(queryParams);
-    }
-
-    function logMkdirp(path, options, callback) {
-      if (typeof options === 'function') {
-        callback = options;
-        options = null;
-      }
-      mkdirp(path, options, function (error, created) {
-        if (error) {
-          grunt.log.error("Couldn't create %j: %s", path, error);
-        }
-        callback(error, created);
-      });
     }
 
     function main() {
