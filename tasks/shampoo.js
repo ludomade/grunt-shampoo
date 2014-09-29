@@ -50,6 +50,45 @@ module.exports = function( grunt ) {
       });
     }
 
+    function castToArray(thing) {
+      if (!thing) {
+        return [ ];
+      }
+      if (Array.isArray(thing)) {
+        return thing;
+      }
+      return [ thing ];
+    }
+
+    function responseOk(requestName, error, response, allowExtraStatusCodes) {
+      var allowStatusCodes = [ HTTP_OK ].concat(castToArray(allowExtraStatusCodes)),
+        formatArgs = [ "" ],
+        ok = true;
+
+      if (requestName) {
+        formatArgs[0] += "%j: ";
+        formatArgs.push(requestName);
+      }
+
+      if (error) {
+        formatArgs[0] += "Request error: %s";
+        formatArgs.push(error);
+        ok = false;
+      } else if (!response) {
+        formatArgs[0] += "No response";
+        ok = false;
+      } else if (allowStatusCodes.indexOf(response.statusCode) < 0) {
+        formatArgs[0] += "Unexpected status code: %s";
+        formatArgs.push(response.statusCode);
+        ok = false;
+      }
+
+      if (!ok) {
+        grunt.log.error.apply(grunt.log, formatArgs);
+      }
+      return ok;
+    }
+
     function makeClient( options ) {
       return knox.createClient( _.pick(options, [
         'region', 'endpoint', 'port', 'key', 'secret', 'access', 'bucket', 'secure', 'headers', 'style'
@@ -131,15 +170,8 @@ module.exports = function( grunt ) {
       grunt.verbose.writeln("Downloading JSON");
 
       request(url, function( error, response, body ) {
-        var errorFormatArgs = null,
-          jsonContent;
-        if (error) {
-          errorFormatArgs = [ "Error requesting %j: %s", url, error ];
-        } else if (!response) {
-          errorFormatArgs = [ "Empty response for %j", url ];
-        } else if (response.statusCode !== HTTP_OK) {
-          errorFormatArgs = [ "Unexpected response for %j: %s", url, response.statusCode ];
-        } else {
+        var jsonContent = null;
+        if (responseOk(url, error, response)) {
           try {
             jsonContent = JSON.parse(body);
           } catch (parseError) {
@@ -147,16 +179,7 @@ module.exports = function( grunt ) {
           }
         }
 
-        if (errorFormatArgs) {
-          grunt.verbose.error();
-          var errorMessage = util.format.apply(util, errorFormatArgs);
-          grunt.log.error(errorMessage);
-          done(false);
-          return;
-        }
-
-        grunt.verbose.ok();
-        if( options.out ) {
+        if (jsonContent && options.out) {
           if( options.mediaOut ) {
 
             saveMedia(options, jsonContent, done);
@@ -170,7 +193,9 @@ module.exports = function( grunt ) {
           }
         }
 
-        // TODO: check, do we call done if we fall through to here?
+        // we reach here if request failed, json parse failed, or if options.out
+        // is not set
+        done();
       });
 
     }
@@ -193,45 +218,47 @@ module.exports = function( grunt ) {
         grunt.verbose.writeln("Downloading zip");
         request(url, function(error, response, body) {
 
-          // TODO: handle bads
+          if (responseOk(url, error, response)) {
+            var unzipper = new DecompressZip(zipPath);
 
-          var unzipper = new DecompressZip(zipPath);
+            unzipper.on("extract", function (log) {
 
-          unzipper.on("extract", function (log) {
+              //on extraction of the zip, check if mediaOut is set, if so, loop through all the unzipped files, and grab down the neccesary media.
+              if(options.mediaOut !== "") {
 
-            //on extraction of the zip, check if mediaOut is set, if so, loop through all the unzipped files, and grab down the neccesary media.
-            if(options.mediaOut !== "") {
+                for(var key in log) {
+                  var unzippedFile = options.zipOut + log[key].deflated;
 
-              for(var key in log) {
-                var unzippedFile = options.zipOut + log[key].deflated;
+                  fs.readFile( unzippedFile, function ( err, data ) {
 
-                fs.readFile( unzippedFile, function ( err, data ) {
+                    var body = JSON.parse(data);
+                    //override the out to match zipOut, as json files get written to options.out
+                    options.out = unzippedFile;
+                    saveMedia(options, body, done);
 
-                  var body = JSON.parse(data);
-                  //override the out to match zipOut, as json files get written to options.out
-                  options.out = unzippedFile;
-                  saveMedia(options, body, done);
+                  });
 
-                });
+                }
+
+              } else {
+
+                done();
 
               }
 
-            } else {
+            });
 
-              done();
+            unzipper.on("error", function(error) {
+              grunt.log.error("An error occurred unzipping the file %j: %s", zipPath, error);
+              done(false);
+            });
 
-            }
-
-          });
-
-          unzipper.on("error", function(error) {
-            grunt.log.error("An error occurred unzipping the file %j: %s", zipPath, error);
+            unzipper.extract({
+              path: options.zipOut
+            });
+          } else {
             done(false);
-          });
-
-          unzipper.extract({
-            path: options.zipOut
-          });
+          }
 
         }).pipe(fs.createWriteStream(zipPath));
 
@@ -303,16 +330,6 @@ module.exports = function( grunt ) {
     function downloadFile(client, src, dest, etag, doneCallback) {
       var requestHeaders = { };
 
-      function logError() {
-        grunt.log.write( dest + " " );
-        grunt.log.error.apply(grunt.log, arguments);
-      }
-
-      function logOk() {
-        grunt.log.write( dest + " " );
-        grunt.log.ok.apply(grunt.log, arguments);
-      }
-
       grunt.verbose.writeln("S3 GET %j", src);
 
       if (etag) {
@@ -321,44 +338,27 @@ module.exports = function( grunt ) {
       }
 
       client.getFile(src, requestHeaders, function (err, res) {
-        var stop = false;
-
-        if (err) {
-          logError("Error requesting %j: %s", src, err);
-          stop = true;
-        } else if (!res) {
-          logError("Error requesting %j", src);
-          stop = true;
-        } else if (res.statusCode === HTTP_NOT_MODIFIED) {
-          logOk("up to date");
-          stop = true;
-        } else if (res.statusCode !== HTTP_OK) {
-          logError("Unexpected response for %j: %s", src, res.statusCode);
-          stop = true;
-        }
-
-        if (stop) {
-          doneCallback();
-          return;
-        }
-
-        var file = fs.createWriteStream(dest);
-        file.on("error", function(e) {
-          logError("Error writing: %s", e);
-          doneCallback();
-        });
-
-        res
-          .on('error', function (err) {
-            logError("Error reading %j: %s", src, err);
-            doneCallback();
-          })
-          .on('end', function () {
-            logOk( "downloaded" );
+        if (responseOk(src, err, res, HTTP_NOT_MODIFIED)) {
+          var file = fs.createWriteStream(dest);
+          file.on("error", function(e) {
+            logError("Error writing: %s", e);
             doneCallback();
           });
 
-        res.pipe(file);
+          res
+            .on('error', function (err) {
+              logError("Error reading %j: %s", src, err);
+              doneCallback();
+            })
+            .on('end', function () {
+              logOk( "downloaded" );
+              doneCallback();
+            });
+
+          res.pipe(file);
+        } else {
+          doneCallback();
+        }
       });
 
     }
