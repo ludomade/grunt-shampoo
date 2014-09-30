@@ -11,7 +11,6 @@
 var request = require("request"),
     fs = require("fs"),
     knox = require("knox"),
-    crypto = require('crypto'),
     rc = require('rc'),
     DecompressZip = require('decompress-zip'),
     fs = require('fs'),
@@ -22,6 +21,7 @@ var request = require("request"),
     _ = require('lodash'),
 
     shampooApi = require('./lib/shampoo-api'),
+    shampooUtils = require('./lib/shampoo-utils'),
     createHandlerFilter = require('./lib/handler-filters');
 
 var HTTP_NOT_MODIFIED = 304;
@@ -245,23 +245,25 @@ module.exports = function( grunt ) {
     function verifyDownload( client, remotePath, mediaOut, callback ) {
 
       var localPath = path.join(mediaOut, remotePath);
-      var localHash = null;
 
       grunt.log.debug("Verifying %j -> %j", remotePath, localPath);
-      fs.readFile( localPath, function ( error, text ) {
+
+      shampooUtils.hashFile(localPath, "md5", function (error, hasher) {
+        var localHash = null;
         if (error) {
           grunt.log.debug("Etag calculation of local file failed: %s", error);
         } else {
-          localHash = crypto.createHash('md5').update(text).digest('hex');
+          localHash = hasher.digest("hex");
         }
 
         mkdirp(path.dirname(localPath), function (error) {
-          if (!error) {
+          if (error) {
+            callback();
+          } else {
             downloadFile(client, remotePath, localPath, localHash, callback);
           }
         });
       });
-
     }
 
     function writeJsonFile(out, object) {
