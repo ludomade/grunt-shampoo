@@ -27,7 +27,9 @@ function createHandlerFilter(grunt) {
 			var args = argsToArray(arguments);
 			if (!args[0]) {
 				if (codeArray.indexOf(args[1].statusCode) < 0) {
-					args[0] = new Error("HTTP code " + args[1].statusCode);
+					var error = new Error("HTTP code " + args[1].statusCode);
+					error.statusCode = args[1].statusCode;
+					args[0] = error;
 				}
 			}
 			handler.apply(null, args);
