@@ -85,7 +85,7 @@ module.exports = function( grunt ) {
     }
 
     function getMediaAssets( obj, mediaCwd ) {
-      
+
       var objQueue = [ obj ],
         prefixQueue = [ "[Root]" ],
         remotePaths = { };
@@ -113,7 +113,7 @@ module.exports = function( grunt ) {
               );
 
               // record the remote path relative to its root.
-              // setting it as an object property means dupes are naturally 
+              // setting it as an object property means dupes are naturally
               // eliminated.
               remotePaths[assetPath] = true;
             }
@@ -443,7 +443,7 @@ module.exports = function( grunt ) {
         grunt.log.error(messagesString);
         callback(false);
       }
-      
+
     }
 
     return main();
