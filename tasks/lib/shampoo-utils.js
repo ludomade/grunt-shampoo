@@ -27,13 +27,7 @@ exports.hashStream = function (stream, hasher, callback) {
 
 
 exports.hashFile = function (path, hasher, callback) {
-  try {
-    hashStream(fs.createReadStream(path), hasher, callback);
-  } catch (error) {
-    process.nextTick(function () {
-      callback(error, null);
-    });
-  }
+  hashStream(fs.createReadStream(path), hasher, callback);
 };
 
 
@@ -45,16 +39,11 @@ exports.downloadToFile = function (uri, path, options, callback) {
 
   var writeStreamOptions = _.pick(options, [ "encoding", "mode" ]);
   var requestOptions = _.omit(options, [ "flags", "mode" ]);
-  var outStream;
 
-  try {
-    outStream = fs.createWriteStream(path, writeStreamOptions);
-  } catch (error) {
-    process.nextTick(function () {
-      callback(error, null);
-    });
-    return;
-  }
+  var outStream = fs.createWriteStream(path, writeStreamOptions);
+  outStream.on("error", function (error) {
+    callback(error, null);
+  });
 
   request(uri, requestOptions, function (error, response) {
     callback(error, response);
