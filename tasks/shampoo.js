@@ -274,12 +274,14 @@ module.exports = function( grunt ) {
     function downloadFile(client, remotePath, localPath, etag, callback) {
       var requestHeaders = { };
 
-      grunt.log.debug("S3 GET %j", remotePath);
+      var debugMessage = util.format("S3 GET %j", remotePath);
 
       if (etag) {
-        grunt.log.debug("If-None-Match: %s", etag);
+        debugMessage += util.format(" If-None-Match: %s", etag);
         requestHeaders["If-None-Match"] = etag;
       }
+
+      grunt.log.debug(debugMessage);
 
       client.getFile(remotePath, requestHeaders, handlerFilter.expectHttpOk(remotePath,
         function (error, response) {
