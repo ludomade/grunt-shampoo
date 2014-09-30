@@ -15,6 +15,7 @@ function createHandlerFilter(grunt) {
 		logPrefix = String(logPrefix) + ": ";
 		return function (error) {
 			if (error) {
+				grunt.log.debug("Error: %j", error);
 				grunt.log.error(logPrefix + error);
 			}
 			handler.apply(null, arguments);
