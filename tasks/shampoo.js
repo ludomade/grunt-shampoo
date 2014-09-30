@@ -127,12 +127,66 @@ module.exports = function( grunt ) {
       return Object.keys(remotePaths);
     }
 
+    function processJsonFiles(localPaths, options, callback) {
+      var waiting = 0;
+
+      function fileComplete() {
+        if (--waiting <= 0) {
+          callback();
+        }
+      }
+
+      localPaths.forEach(function (localPath) {
+        waiting++;
+        fs.readFile(localPath, handlerFilter.expectJsonContents(localPath,
+          function (error, jsonContent) {
+            if (error) {
+              fileComplete();
+            } else {
+              processJson(jsonContent, localPath, options, fileComplete);
+            }
+          }
+        ));
+      });
+    }
+
+    function processZipFile(zipPath, options, callback) {
+      var unzipper = new DecompressZip(zipPath);
+
+      unzipper.on("extract", function (log) {
+        grunt.log.debug("%s extract log:\n%j", zipPath, log);
+        if (options.mediaOut != null) {
+          var extractedFiles = log.map(function (extractResult) {
+              return extractResult.deflated || extractResult.stored;
+            }).filter(function (path) {
+              return Boolean(path);
+            }).map(function (path) {
+              return path.join(options.zipOut, path);
+            });
+
+          if (extractedFiles.length > 0) {
+            processJsonFiles(extractedFiles, options, callback);
+            return;
+          }
+        }
+        // fell through to here because options.mediaOut was not set,
+        // or the zip file contained no usable files
+        callback();
+      });
+
+      unzipper.on("error", function(error) {
+        grunt.log.error("Error unzipping file %j: %s", zipPath, error);
+        callback();
+      });
+
+      unzipper.extract({ path: options.zipOut });
+    }
+
     function generateZipFileName() {
       return ZIP_FILE_NAME_PREFIX + Date.now() + ".zip";
     }
 
     function requestZip(url, options, callback) {
-
       var zipPath = path.join(
         options.zipOut, ZIP_FOLDER_NAME, generateZipFileName());
 
@@ -143,72 +197,16 @@ module.exports = function( grunt ) {
         }
 
         grunt.verbose.writeln("Downloading zip");
-        request(url, handlerFilter.expectHttpOk(url,
+        shampooUtils.downloadToFile(url, zipPath, handlerFilter.expectHttpOk(url,
           function (error) {
             if (error) {
               callback();
-              return;
+            } else {
+              processZipFile(zipPath, options, callback);
             }
-
-            var unzipper = new DecompressZip(zipPath);
-
-            unzipper.on("extract", function (log) {
-
-              grunt.log.debug("%s extract log:\n%j", zipPath, log);
-
-              //on extraction of the zip, check if mediaOut is set, if so, loop through all the unzipped files, and grab down the neccesary media.
-              if(options.mediaOut == null) {
-                // if not, we're done
-                callback();
-                return;
-              }
-
-              var waitingFiles = 0;
-
-              function componentFileComplete() {
-                waitingFiles--;
-                if (waitingFiles <= 0) {
-                  callback();
-                }
-              }
-
-              for(var key in log) {
-                var unzippedFile = path.join(options.zipOut, log[key].deflated);
-
-                waitingFiles++;
-
-                fs.readFile(unzippedFile, handlerFilter.expectJsonContents(unzippedFile,
-                  function (error, jsonContent) {
-                    if (error) {
-                      componentFileComplete();
-                    } else {
-                      processJson(jsonContent, unzippedFile, options, componentFileComplete);
-                    }
-                  }
-                ));
-
-                if (waitingFiles === 0) {
-                  grunt.log.error("Empty zip file: %j", zipPath);
-                  callback();
-                }
-
-              }
-
-            });
-
-            unzipper.on("error", function(error) {
-              grunt.log.error("Error unzipping file %j: %s", zipPath, error);
-              callback();
-            });
-
-            unzipper.extract({
-              path: options.zipOut
-            });
           }
-        )).pipe(fs.createWriteStream(zipPath));
-
+        ));
       });
-
     }
 
     function saveMedia(options, mediaAssets, callback) {
