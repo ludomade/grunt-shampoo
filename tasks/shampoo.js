@@ -36,8 +36,8 @@ module.exports = function( grunt ) {
   grunt.registerMultiTask( "shampoo", "Retrieve content from the Shampoo CMS API on shampoo.io.", function() {
 
     var thisTask = this,
-        handlerFilter = createHandlerFilter(grunt);
-
+        handlerFilter = createHandlerFilter(grunt),
+        knoxClient = null;
 
     function mkdirp(path, options, callback) {
       if (typeof options === 'function') {
@@ -47,13 +47,6 @@ module.exports = function( grunt ) {
       _mkdirp(path, options,
         handlerFilter.logErrors("Couldn't create " + path, callback)
       );
-    }
-
-
-    function makeClient( options ) {
-      return knox.createClient( _.pick(options, [
-        'region', 'endpoint', 'port', 'key', 'secret', 'access', 'bucket', 'secure', 'headers', 'style'
-      ]));
     }
 
     function isMediaAssetUrl(assetUrl) {
@@ -211,8 +204,6 @@ module.exports = function( grunt ) {
 
     function saveMedia(options, mediaAssets, callback) {
 
-      var client = makeClient( options.aws );
-
       grunt.log.subhead( "Retrieving files..." );
 
       grunt.log.debug("Media queue is:");
@@ -232,7 +223,7 @@ module.exports = function( grunt ) {
         } else {
           while (mediaAssets.length > 0 && loadCounter < options.maxConnections) {
             loadCounter++;
-            verifyDownload( client, mediaAssets.shift(), options.mediaOut, next );
+            verifyDownload( mediaAssets.shift(), options.mediaOut, next );
           }
         }
       };
@@ -240,7 +231,7 @@ module.exports = function( grunt ) {
       fillQueue();
     }
 
-    function verifyDownload( client, remotePath, mediaOut, callback ) {
+    function verifyDownload( remotePath, mediaOut, callback ) {
 
       var localPath = path.join(mediaOut, remotePath);
 
@@ -258,7 +249,7 @@ module.exports = function( grunt ) {
           if (error) {
             callback();
           } else {
-            downloadFile(client, remotePath, localPath, localHash, callback);
+            downloadFile(remotePath, localPath, localHash, callback);
           }
         });
       });
@@ -271,7 +262,7 @@ module.exports = function( grunt ) {
 
     }
 
-    function downloadFile(client, remotePath, localPath, etag, callback) {
+    function downloadFile(remotePath, localPath, etag, callback) {
       var requestHeaders = { };
 
       var debugMessage = util.format("S3 GET %j", remotePath);
@@ -283,7 +274,7 @@ module.exports = function( grunt ) {
 
       grunt.log.debug(debugMessage);
 
-      client.getFile(remotePath, requestHeaders, handlerFilter.expectHttpOk(remotePath,
+      knoxClient.getFile(remotePath, requestHeaders, handlerFilter.expectHttpOk(remotePath,
         function (error, response) {
           if (error) {
             callback();
@@ -363,6 +354,13 @@ module.exports = function( grunt ) {
       }
     }
 
+
+    function makeClient(options) {
+      return knox.createClient( _.pick(options, [
+        'region', 'endpoint', 'port', 'key', 'secret', 'access', 'bucket',
+        'secure', 'headers', 'style'
+      ]));
+    }
 
     function getOptions() {
       // Mix in default options, .shampoorc file
