@@ -12,17 +12,16 @@ exports.hashStream = function (stream, hasher, callback) {
     hasher = crypto.createHash(hasher);
   }
 
-  stream.on("end", function () {
-    callback(null, hasher);
-  });
-
-  stream.on("error", function (error) {
-    callback(error, null);
-  });
-
-  stream.on("data", function (chunk) {
-    hasher.update(chunk);
-  });
+  stream
+    .once("end", function () {
+      callback(null, hasher);
+    })
+    .once("error", function (error) {
+      callback(error, null);
+    })
+    .on("data", function (chunk) {
+      hasher.update(chunk);
+    });
 };
 
 

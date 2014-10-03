@@ -147,31 +147,31 @@ module.exports = function( grunt ) {
     function processZipFile(zipPath, options, callback) {
       var unzipper = new DecompressZip(zipPath);
 
-      unzipper.on("extract", function (log) {
-        grunt.log.debug("%s extract log:\n%j", zipPath, log);
-        if (options.mediaOut != null) {
-          var extractedFiles = log.map(function (extractResult) {
-              return extractResult.deflated || extractResult.stored;
-            }).filter(function (path) {
-              return Boolean(path);
-            }).map(function (path) {
-              return path.join(options.zipOut, path);
-            });
+      unzipper
+        .once("extract", function (log) {
+          grunt.log.debug("%s extract log:\n%j", zipPath, log);
+          if (options.mediaOut != null) {
+            var extractedFiles = log.map(function (extractResult) {
+                return extractResult.deflated || extractResult.stored;
+              }).filter(function (path) {
+                return Boolean(path);
+              }).map(function (path) {
+                return path.join(options.zipOut, path);
+              });
 
-          if (extractedFiles.length > 0) {
-            processJsonFiles(extractedFiles, options, callback);
-            return;
+            if (extractedFiles.length > 0) {
+              processJsonFiles(extractedFiles, options, callback);
+              return;
+            }
           }
-        }
-        // fell through to here because options.mediaOut was not set,
-        // or the zip file contained no usable files
-        callback();
-      });
-
-      unzipper.on("error", function(error) {
-        grunt.log.error("Error unzipping file %j: %s", zipPath, error);
-        callback();
-      });
+          // fell through to here because options.mediaOut was not set,
+          // or the zip file contained no usable files
+          callback();
+        })
+        .once("error", function(error) {
+          grunt.log.error("Error unzipping file %j: %s", zipPath, error);
+          callback();
+        });
 
       unzipper.extract({ path: options.zipOut });
     }

@@ -338,16 +338,17 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
       moveCallback(copyError);
     }
 
-    toStream.on("error", copyErrorHandler);
-    fromStream.on("error", copyErrorHandler);
-    fromStream.on("end", function () {
-      fs.unlink(fromPath, function (unlinkError) {
-        if (unlinkError) {
-          callLogger(logError, "Error removing %s: %j", fromPath, unlinkError);
-        }
-        moveCallback();
+    toStream.once("error", copyErrorHandler);
+    fromStream
+      .once("error", copyErrorHandler)
+      .once("end", function () {
+        fs.unlink(fromPath, function (unlinkError) {
+          if (unlinkError) {
+            callLogger(logError, "Error removing %s: %j", fromPath, unlinkError);
+          }
+          moveCallback();
+        });
       });
-    });
 
     fromStream.pipe(toStream);
   };
@@ -432,19 +433,19 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
         return;
       }
 
-      outputStream.on("error", function (writeError) {
+      outputStream.once("error", function (writeError) {
         callLogger(logError, "Write stream error: %j", writeError);
         callback(writeError);
       });
 
       response
-        .on("error", function (responseError) {
+        .once("error", function (responseError) {
           callLogger(logError, "Response error: %j", responseError);
           outputStream.end(function () {
             checkRetry(responseError);
           });
         })
-        .on("end", function () {
+        .once("end", function () {
           callLogger(logVerbose, "Download complete");
           moveFile(fsPath, finalPath, function (moveError) {
             callback(moveError, moveError ? null : response);
