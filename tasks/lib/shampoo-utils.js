@@ -48,3 +48,64 @@ exports.downloadToFile = function (uri, path, options, callback) {
     callback(error, response);
   }).pipe(outStream);
 };
+
+
+function isJsonValue(v) {
+  if (v == null) {
+    return true;
+  }
+  switch (typeof v) {
+  case "number":
+  case "string":
+  case "boolean":
+    return true;
+  }
+  return false;
+}
+
+function containerOfType(i) {
+  if (isJsonValue(i)) {
+    return null;
+  }
+  if (Array.isArray(i)) {
+    return [ ];
+  }
+  return { };
+}
+
+exports.transformJson = function (obj, func, thisArg) {
+  if (isJsonValue(obj)) {
+    return func.call(thisArg, obj, null, null, null);
+  }
+
+  var inq = [ obj ],
+      result = containerOfType(obj),
+      outq = [ result ],
+      keyPaths = [ [ ] ];
+
+  var inObj, outObj, parentKeyPath, currentKeyPath;
+
+  var processPair = function (v, k) {
+    currentKeyPath = parentKeyPath.slice();
+    currentKeyPath.push(k);
+
+    if (isJsonValue(v)) {
+      outObj[k] = func.call(thisArg, v, k, inObj, currentKeyPath);
+    } else {
+      var newContainer = containerOfType(v);
+      outObj[k] = newContainer;
+      inq.push(v);
+      outq.push(newContainer);
+      keyPaths.push(currentKeyPath);
+    }
+  };
+
+  while (inq.length > 0) {
+    inObj = inq.shift();
+    outObj = outq.shift();
+    parentKeyPath = keyPaths.shift();
+    _.forOwn(inObj, processPair);
+  }
+
+  return result;
+};
