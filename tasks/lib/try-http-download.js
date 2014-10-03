@@ -279,9 +279,9 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
 
       serverAcceptsRanges = options.resume,
 
-      logDebug = options.logError,
+      logError =   options.logError,
       logVerbose = options.logVerbose,
-      logError = options.logDebug;
+      logDebug =   options.logDebug;
 
   var resume = function () {
     if (remoteEtag && serverAcceptsRanges) {
