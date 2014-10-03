@@ -283,6 +283,8 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
       logVerbose = options.logVerbose,
       logDebug =   options.logDebug;
 
+  callLogger(logDebug, "fsPath=%j, finalPath=%j", fsPath, finalPath);
+
   var resume = function () {
     if (remoteEtag && serverAcceptsRanges) {
       fs.stat(fsPath, function (statError, stats) {
