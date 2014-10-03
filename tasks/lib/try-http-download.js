@@ -18,7 +18,9 @@
 // 15.   If ECONNRESET, goto 5
 
 var fs = require("fs"),
-    util = require("util");
+    util = require("util"),
+    tmp = require("tmp"),
+    path = require("path");
 
 var DEFAULT_RETRIES = 6,
 
@@ -32,7 +34,14 @@ var DEFAULT_RETRIES = 6,
     HTTP_TO_MESSAGE = null,
 
     // number of bytes to back up when resuming
-    RESUME_REWIND = 2;
+    RESUME_REWIND = 2,
+
+    // for strict mode, or does node accept octal strings as well?
+    M0600 = parseInt("600", 8),
+    M0644 = parseInt("644", 8),
+
+    _moduleTempDir = null,
+    _tempFileId = 0;
 
 
 function httpCodeToMessage(code) {
@@ -46,6 +55,34 @@ function httpCodeToMessage(code) {
     HTTP_TO_MESSAGE = h;
   }
   return HTTP_TO_MESSAGE[code] || "";
+}
+
+
+function getTempDir(callback) {
+  if (_moduleTempDir === null) {
+    tmp.dir({ unsafeCleanup: true }, function (error, tempDirPath) {
+      if (!error) {
+        _moduleTempDir = tempDirPath;
+      }
+      callback(error, _moduleTempDir);
+    });
+  } else {
+    process.nextTick(function () {
+      callback(null, _moduleTempDir);
+    });
+  }
+}
+
+
+function getTempFileName(callback) {
+  getTempDir(function (error, tempDirPath) {
+    if (error) {
+      callback(error, null);
+    } else {
+      var name = (_tempFileId++).toString(36);
+      callback(null, path.join(tempDirPath, name));
+    }
+  });
 }
 
 
@@ -136,6 +173,8 @@ function callLogger(func, message /*, messageFormatArgs ... */) {
 }
 
 
+var tryHttpDownload, _tryHttpDownload;
+
 /**
  * tryHttpDownload - Robust HTTP downloader
  *
@@ -193,39 +232,60 @@ function callLogger(func, message /*, messageFormatArgs ... */) {
  *     the response's body has already been written to localPath (or localPath
  *     has been left untouched in the case of a 304 Not Modified)
  */
-function tryHttpDownload(requestFunction, localPath, options, callback) {
-  var retries = DEFAULT_RETRIES,
-      localEtag = null,
-      remoteEtag = null,
-
-      serverAcceptsRanges = true,
-
-      logDebug = null,
-      logVerbose = null,
-      logError = null;
-
+tryHttpDownload = function (requestFunction, localPath, options, callback) {
   if ((typeof callback === "function") && !callback) {
     callback = options;
     options = null;
   }
 
-  if (options) {
-    if (isFinite(options.retries)) {
-      retries = Math.floor(options.retries);
-      if (retries > 0) {
-        retries = 0;
-      }
-    }
-    if (options.etag) { localEtag = options.etag; }
-    serverAcceptsRanges = options.resume !== false;
-    logError =   options.logError;
-    logVerbose = options.logVerbose;
-    logDebug =   options.logDebug;
+  if (!options) {
+    options = { };
   }
+
+  var vOptions = {
+    retries:    DEFAULT_RETRIES,
+    etag:       null,
+    resume:     options.resume !== false,
+    logError:   options.logError || null,
+    logVerbose: options.logVerbose || null,
+    logDebug:   options.logDebug || null
+  };
+
+  if (isFinite(options.retries)) {
+    vOptions.retries = Math.floor(+options.retries);
+    if (vOptions.retries < 0) {
+      vOptions.retries = 0;
+    }
+  }
+
+  if (options.etag || options.etag === "") {
+    vOptions.etag = String(options.etag);
+  }
+
+  getTempFileName(function (error, tempFilePath) {
+    if (error) {
+      callLogger(vOptions.logError, "Couldn't create temporary directory: %j", error);
+      callback(error, null);
+    } else {
+      _tryHttpDownload(requestFunction, tempFilePath, localPath, vOptions, callback);
+    }
+  });
+};
+
+_tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callback) {
+  var retries = DEFAULT_RETRIES,
+      localEtag = options.etag,
+      remoteEtag = null,
+
+      serverAcceptsRanges = options.resume,
+
+      logDebug = options.logError,
+      logVerbose = options.logVerbose,
+      logError = options.logDebug;
 
   var resume = function () {
     if (remoteEtag && serverAcceptsRanges) {
-      fs.stat(localPath, function (statError, stats) {
+      fs.stat(fsPath, function (statError, stats) {
         var resumeOffset = 0;
         if (!statError) {
           if (stats.isFile()) {
@@ -263,13 +323,39 @@ function tryHttpDownload(requestFunction, localPath, options, callback) {
       callLogger(logDebug, "Not a retriable error: %j", error);
     }
     callback(error);
-  }
+  };
+
+  var moveFile = function (fromPath, toPath, moveCallback) {
+    var fromStream = fs.createReadStream(fromPath),
+        toStream = fs.createWriteStream(toPath, { mode: M0644 });
+
+    callLogger(logVerbose, "Moving %s -> %s", fromPath, toPath);
+
+    function copyErrorHandler(copyError) {
+      fromStream.unpipe();
+      toStream.end();
+      callLogger(logError, "Error moving %s to %s: %j", fromPath, toPath, copyError);
+      moveCallback(copyError);
+    }
+
+    toStream.on("error", copyErrorHandler);
+    fromStream.on("error", copyErrorHandler);
+    fromStream.on("end", function () {
+      fs.unlink(fromPath, function (unlinkError) {
+        if (unlinkError) {
+          callLogger(logError, "Error removing %s: %j", fromPath, unlinkError);
+        }
+        moveCallback();
+      });
+    });
+
+    fromStream.pipe(toStream);
+  };
 
   var doRequest = function (headers) {
     callLogger(logDebug, "Request %j", headers);
     requestFunction(headers || { }, function (requestError, response) {
       var outputStream,
-        retryOnOutputNotFound = false,
         responseHeaders = (response && response.headers) || { };
 
       if (requestError) {
@@ -301,7 +387,7 @@ function tryHttpDownload(requestFunction, localPath, options, callback) {
       switch (response.statusCode) {
       case HTTP_STATUS_OK:
         // truncate local file and open
-        outputStream = fs.createWriteStream(localPath);
+        outputStream = fs.createWriteStream(fsPath, { mode: M0600 });
         break;
 
       case HTTP_STATUS_PARTIAL_CONTENT:
@@ -310,11 +396,10 @@ function tryHttpDownload(requestFunction, localPath, options, callback) {
         if (range && range.hasRange) {
           callLogger(logVerbose, "Resuming from byte %d", range.first);
           outputStream = fs.createWriteStream(
-            localPath, {
+            fsPath, {
               flags: "r+",
               start: range.first
             });
-          retryOnOutputNotFound = true;
         } else {
           // server should not send 206 without a nnn-mmm Content-Range, so
           // it's being goofy. ignore the response, try again without range.
@@ -348,30 +433,22 @@ function tryHttpDownload(requestFunction, localPath, options, callback) {
       }
 
       outputStream.on("error", function (writeError) {
-        if (retryOnOutputNotFound && writeError.code === "ENOENT") {
-          callLogger(
-            logVerbose,
-            "Tried to resume but local file %j has disappeared. Restarting...",
-            localPath
-          );
-          retryOnOutputNotFound = false;
-          doRequest();
-        } else {
-          callLogger(logError, "Write stream error: %j", writeError);
-          callback(writeError);
-        }
+        callLogger(logError, "Write stream error: %j", writeError);
+        callback(writeError);
       });
 
       response
         .on("error", function (responseError) {
           callLogger(logError, "Response error: %j", responseError);
           outputStream.end(function () {
-            checkRetry(error);
+            checkRetry(responseError);
           });
         })
         .on("end", function () {
           callLogger(logVerbose, "Download complete");
-          callback(null, response);
+          moveFile(fsPath, finalPath, function (moveError) {
+            callback(moveError, moveError ? null : response);
+          });
         });
 
       response.pipe(outputStream);
@@ -381,6 +458,6 @@ function tryHttpDownload(requestFunction, localPath, options, callback) {
   doRequest(localEtag ? {
     "if-none-match": formatEntityTag(localEtag)
   } : null);
-}
+};
 
 module.exports = tryHttpDownload;
