@@ -54,8 +54,36 @@ function requestRangeFrom(byteCount) {
 }
 
 
-function parseRangeResponse(headerValue) {
-  var match = /^bytes (?:\d+-\d+|\*)\/(?:\d+|\*)$/ .exec(String(headerValue));
+function parseEntityTag(etagString) {
+  var match = /^(w\/)?\"((?:[ !#-~]|\\.)+)\"$/i .exec(String(etagString));
+  if (match) {
+    return {
+      weak: Boolean(match[1]),
+      tag:  match[2].replace(
+        /\\(.)/g,
+        function (w, c) {
+          return c;
+        } )
+    };
+  }
+  return null;
+}
+
+
+function formatEntityTag(tag, isWeak) {
+  return (isWeak ? "W/" : "") +
+    '"' +
+    String(tag).replace(
+      /[\\\"]/g, function (w) {
+        return "\\" + w;
+      }
+    ) +
+    '"';
+}
+
+
+function parseRangeResponse(rangeString) {
+  var match = /^bytes (?:\d+-\d+|\*)\/(?:\d+|\*)$/ .exec(String(rangeString));
   if (!match) {
     return null;
   }
@@ -205,7 +233,7 @@ function tryHttpDownload(requestFunction, localPath, options, callback) {
           } // else it's not a file, just let that fail later
         }
         doRequest(resumeOffset > 0 ? {
-          "if-match": remoteEtag,
+          "if-match": formatEntityTag(remoteEtag),
           "if-range": requestRangeFrom(resumeOffset)
         } : null);
       });
@@ -241,7 +269,8 @@ function tryHttpDownload(requestFunction, localPath, options, callback) {
         httpCodeToMessage(response.statusCode)
       );
 
-      remoteEtag = responseHeaders["etag"] || null;
+      var etagResult = parseEntityTag(responseHeaders["etag"]);
+      remoteEtag = (etagResult && etagResult.tag) || null;
       if (remoteEtag) {
         callLogger(logDebug, "remoteEtag: %j", remoteEtag);
       }
@@ -344,7 +373,7 @@ function tryHttpDownload(requestFunction, localPath, options, callback) {
   };
 
   doRequest(localEtag ? {
-    "if-none-match": localEtag
+    "if-none-match": formatEntityTag(localEtag)
   } : null);
 }
 
