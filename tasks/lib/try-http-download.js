@@ -112,9 +112,9 @@ function parseRangeResponse(rangeString) {
 
 
 function makeHttpErrorObject(httpCode) {
-  var error = new Error("HTTP code " + httpCode);
-  error.code = httpCode;
-  return error;
+  var httpError = new Error("HTTP code " + httpCode);
+  httpError.code = httpCode;
+  return httpError;
 }
 
 
@@ -225,9 +225,9 @@ function tryHttpDownload(requestFunction, localPath, options, callback) {
 
   var resume = function () {
     if (remoteEtag && serverAcceptsRanges) {
-      fs.stat(localPath, function (error, stats) {
+      fs.stat(localPath, function (statError, stats) {
         var resumeOffset = 0;
-        if (!error) {
+        if (!statError) {
           if (stats.isFile()) {
             resumeOffset = Math.max(0, stats.size - RESUME_REWIND);
           } // else it's not a file, just let that fail later
@@ -267,14 +267,14 @@ function tryHttpDownload(requestFunction, localPath, options, callback) {
 
   var doRequest = function (headers) {
     callLogger(logDebug, "Request %j", headers);
-    requestFunction(headers || { }, function (error, response) {
+    requestFunction(headers || { }, function (requestError, response) {
       var outputStream,
         retryOnOutputNotFound = false,
         responseHeaders = (response && response.headers) || { };
 
-      if (error) {
-        callLogger(logError, "Request error: %j", error);
-        checkRetry(error);
+      if (requestError) {
+        callLogger(logError, "Request error: %j", requestError);
+        checkRetry(requestError);
         return;
       }
 
@@ -347,8 +347,8 @@ function tryHttpDownload(requestFunction, localPath, options, callback) {
         return;
       }
 
-      outputStream.on("error", function (error) {
-        if (retryOnOutputNotFound && error.code === "ENOENT") {
+      outputStream.on("error", function (writeError) {
+        if (retryOnOutputNotFound && writeError.code === "ENOENT") {
           callLogger(
             logVerbose,
             "Tried to resume but local file %j has disappeared. Restarting...",
@@ -357,14 +357,14 @@ function tryHttpDownload(requestFunction, localPath, options, callback) {
           retryOnOutputNotFound = false;
           doRequest();
         } else {
-          callLogger(logError, "Write stream error: %j", error);
-          callback(error);
+          callLogger(logError, "Write stream error: %j", writeError);
+          callback(writeError);
         }
       });
 
       response
-        .on("error", function (error) {
-          callLogger(logError, "Response error: %j", error);
+        .on("error", function (responseError) {
+          callLogger(logError, "Response error: %j", responseError);
           outputStream.end(function () {
             checkRetry(error);
           });
