@@ -22,9 +22,10 @@ var request = require("request"),
 
     shampooApi = require('./lib/shampoo-api'),
     shampooUtils = require('./lib/shampoo-utils'),
-    createHandlerFilter = require('./lib/handler-filters');
+    createHandlerFilter = require('./lib/handler-filters'),
+    tryHttpDownload = require('./lib/try-http-download');
 
-var HTTP_NOT_MODIFIED = 304;
+var HTTP_STATUS_NOT_MODIFIED = 304;
 
 var ZIP_FOLDER_NAME = "content-backups",
     ZIP_FILE_NAME_PREFIX = "content-dump-";
@@ -232,24 +233,45 @@ module.exports = function( grunt ) {
     }
 
     function verifyDownload( remotePath, mediaOut, callback ) {
-
-      var localPath = path.join(mediaOut, remotePath);
+      var localPath = path.join(mediaOut, remotePath),
+          tryOptions = {
+            logError:   grunt.log.error.bind(grunt.log),
+            logVerbose: grunt.verbose.writeln.bind(grunt.verbose),
+            logDebug:   grunt.log.debug.bind(grunt.log)
+          };
 
       grunt.log.debug("Verifying %j -> %j", remotePath, localPath);
 
       shampooUtils.hashFile(localPath, "md5", function (error, hasher) {
-        var localHash = null;
         if (error) {
           grunt.log.debug("Etag calculation of local file failed: %s", error);
         } else {
-          localHash = hasher.digest("hex");
+          tryOptions.etag = hasher.digest("hex");
         }
 
         mkdirp(path.dirname(localPath), function (error) {
           if (error) {
             callback();
           } else {
-            downloadFile(remotePath, localPath, localHash, callback);
+            tryHttpDownload(
+              function (headers, tryCallback) {
+                grunt.log.debug("S3 GET %j", remotePath);
+                knoxClient.getFile(remotePath, headers, tryCallback);
+              },
+              localPath,
+              tryOptions,
+              function (error, response) {
+                grunt.log.write("%s ", localPath);
+                if (error) {
+                  grunt.log.error("%j", error);
+                } else if (response.statusCode === HTTP_STATUS_NOT_MODIFIED) {
+                  grunt.log.ok("up to date");
+                } else {
+                  grunt.log.ok("downloaded");
+                }
+                callback();
+              }
+            );
           }
         });
       });
@@ -259,59 +281,7 @@ module.exports = function( grunt ) {
       grunt.log.write( out + " ");
       grunt.log.ok( "saved" );
       grunt.file.write(out, JSON.stringify(object, null, '\t'));
-
     }
-
-    function downloadFile(remotePath, localPath, etag, callback) {
-      var requestHeaders = { };
-
-      var debugMessage = util.format("S3 GET %j", remotePath);
-
-      if (etag) {
-        debugMessage += util.format(" If-None-Match: %s", etag);
-        requestHeaders["If-None-Match"] = etag;
-      }
-
-      grunt.log.debug(debugMessage);
-
-      knoxClient.getFile(remotePath, requestHeaders, handlerFilter.expectHttpOk(remotePath,
-        function (error, response) {
-          if (error) {
-            callback();
-            return;
-          }
-
-          if (response.statusCode === HTTP_NOT_MODIFIED) {
-            grunt.log.write("%s ", localPath);
-            grunt.log.ok( "up to date" );
-            callback();
-            return;
-          }
-
-          var file = fs.createWriteStream(localPath);
-          file.on("error", function (error) {
-            grunt.log.write("%s ", localPath);
-            grunt.log.error("Error writing: %s", error);
-            callback();
-          });
-
-          response
-            .on('error', function (error) {
-              grunt.log.write("%s ", localPath);
-              grunt.log.error("Error reading %j: %s", remotePath, error);
-              callback();
-            })
-            .on('end', function () {
-              grunt.log.write("%s ", localPath);
-              grunt.log.ok( "downloaded" );
-              callback();
-            });
-
-          response.pipe(file);
-        }
-      ));
-    }
-
 
     function processJson(jsonContent, outJsonFile, options, callback) {
       var mediaAssets = getMediaAssets(jsonContent, options.mediaCwd);
@@ -437,7 +407,11 @@ module.exports = function( grunt ) {
       var callback = thisTask.async();
 
       if (optionResult.ok) {
+        var options = optionResult.options;
         grunt.log.writeln(messagesString);
+        if (options.mediaOut) {
+          knoxClient = makeClient(options.aws || { });
+        }
         requestFiles(optionResult.options, callback);
       } else {
         grunt.log.error(messagesString);
