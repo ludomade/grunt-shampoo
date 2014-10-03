@@ -242,6 +242,29 @@ function tryHttpDownload(requestFunction, localPath, options, callback) {
     }
   };
 
+  var checkRetry = function (error) {
+    if (isRetriableError(error)) {
+      if (retries > 0) {
+        callLogger(
+          logVerbose,
+          "Attempts remaining: %d. Retrying...",
+          error, retries
+        );
+        retries--;
+        resume();
+        return;
+      } else {
+        callLogger(
+          logDebug,
+          "Exhausted attempts. Giving up."
+        );
+      }
+    } else {
+      callLogger(logDebug, "Not a retriable error: %j", error);
+    }
+    callback(error);
+  }
+
   var doRequest = function (headers) {
     callLogger(logDebug, "Request %j", headers);
     requestFunction(headers || { }, function (error, response) {
@@ -251,7 +274,7 @@ function tryHttpDownload(requestFunction, localPath, options, callback) {
 
       if (error) {
         callLogger(logError, "Request error: %j", error);
-        callback(error);
+        checkRetry(error);
         return;
       }
 
@@ -312,7 +335,7 @@ function tryHttpDownload(requestFunction, localPath, options, callback) {
 
       case HTTP_STATUS_PRECONDITION_FAILED:
       case HTTP_STATUS_REQUESTED_RANGE_NOT_SATISFIABLE:
-        callLogger(logVerbose, "File has changed on server side. Restarting.");
+        callLogger(logVerbose, "File has changed on server side. Restarting...");
         localEtag = false;
         remoteEtag = false;
         doRequest();
@@ -328,7 +351,7 @@ function tryHttpDownload(requestFunction, localPath, options, callback) {
         if (retryOnOutputNotFound && error.code === "ENOENT") {
           callLogger(
             logVerbose,
-            "Tried to resume but local file %j has disappeared. Restarting.",
+            "Tried to resume but local file %j has disappeared. Restarting...",
             localPath
           );
           retryOnOutputNotFound = false;
@@ -341,27 +364,10 @@ function tryHttpDownload(requestFunction, localPath, options, callback) {
 
       response
         .on("error", function (error) {
-          if (isRetriableError(error)) {
-            if (retries > 0) {
-              callLogger(
-                logVerbose,
-                "Response error: %j. Attempts remaining: %d",
-                error, retries
-              );
-              retries--;
-              outputStream.end(resume);
-              return;
-            } else {
-              callLogger(
-                logDebug,
-                "Exhausted attempts. Giving up."
-              );
-            }
-          } else {
-            callLogger(logDebug, "Not a retriable error: %j", error);
-          }
           callLogger(logError, "Response error: %j", error);
-          callback(error);
+          outputStream.end(function () {
+            checkRetry(error);
+          });
         })
         .on("end", function () {
           callLogger(logVerbose, "Download complete");
