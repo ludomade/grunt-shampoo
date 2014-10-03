@@ -79,46 +79,36 @@ module.exports = function( grunt ) {
     }
 
     function getMediaAssets( obj, mediaCwd ) {
+      var remotePaths = { },
+          newJson;
 
-      var objQueue = [ obj ],
-        prefixQueue = [ "[Root]" ],
-        remotePaths = { };
-
-      while (objQueue.length > 0) {
-        var thing = objQueue.shift(),
-          prefix = prefixQueue.shift();
-
-        // don't need to type check here, only objects and arrays will iterate,
-        // which is what we want
-        _.forOwn(thing, function (value, key) {
-          var keyPath = prefix + "." + key;
+      newJson = shampooUtils.transformJson(obj,
+        function (value, key, parentObject, keyPath) {
           if (typeof value === "string") {
             var assetPath = getMediaAssetPath(value);
 
             if (assetPath != null) {
-              // rewrite the property in the JSON with the local path
-              thing[key] = path.join(mediaCwd, assetPath);
+              var localPath = path.join(mediaCwd, assetPath);
+              remotePaths[assetPath] = true;
 
               grunt.log.debug(
                 "Rewriting %s\n" +
                 "  old: %j\n" +
                 "  new: %j\n",
-                keyPath, value, thing[key]
+                keyPath.join("."), value, localPath
               );
 
-              // record the remote path relative to its root.
-              // setting it as an object property means dupes are naturally
-              // eliminated.
-              remotePaths[assetPath] = true;
+              return localPath;
             }
-          } else {
-            objQueue.push(value);
-            prefixQueue.push(keyPath);
           }
-        });
-      }
+          return value;
+        }
+      );
 
-      return Object.keys(remotePaths);
+      return {
+        newJson:     newJson,
+        remotePaths: Object.keys(remotePaths)
+      };
     }
 
     function processJsonFiles(localPaths, options, callback) {
@@ -284,11 +274,11 @@ module.exports = function( grunt ) {
     }
 
     function processJson(jsonContent, outJsonFile, options, callback) {
-      var mediaAssets = getMediaAssets(jsonContent, options.mediaCwd);
+      var result = getMediaAssets(jsonContent, options.mediaCwd);
       if (outJsonFile) {
-        writeJsonFile(outJsonFile, jsonContent);
+        writeJsonFile(outJsonFile, result.newJson);
         if (options.mediaOut != null) {
-          saveMedia(options, mediaAssets, callback);
+          saveMedia(options, result.remotePaths, callback);
           return;
         }
       }
