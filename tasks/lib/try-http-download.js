@@ -296,8 +296,8 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
           } // else it's not a file, just let that fail later
         }
         doRequest(resumeOffset > 0 ? {
-          "if-match": formatEntityTag(remoteEtag),
-          "if-range": requestRangeFrom(resumeOffset)
+          "If-Match": formatEntityTag(remoteEtag),
+          "If-Range": requestRangeFrom(resumeOffset)
         } : null);
       });
     } else {
@@ -462,7 +462,7 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
   };
 
   doRequest(localEtag ? {
-    "if-none-match": formatEntityTag(localEtag)
+    "If-None-Match": formatEntityTag(localEtag)
   } : null);
 };
 
