@@ -286,6 +286,7 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
   callLogger(logDebug, "fsPath=%j, finalPath=%j", fsPath, finalPath);
 
   var resume = function () {
+    callLogger(logDebug, "Attempting to resume. remoteEtag=%j, serverAcceptsRanges=%j", remoteEtag, serverAcceptsRanges);
     if (remoteEtag && serverAcceptsRanges) {
       fs.stat(fsPath, function (statError, stats) {
         var resumeOffset = 0;
@@ -366,6 +367,8 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
         checkRetry(requestError);
         return;
       }
+
+      callLogger(logDebug, "Response headers: %j", responseHeaders);
 
       if (serverAcceptsRanges) {
         if (responseHeaders["accept-ranges"] === "none") {
