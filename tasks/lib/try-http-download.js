@@ -373,8 +373,8 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
       if (serverAcceptsRanges) {
         if (responseHeaders["accept-ranges"] === "none") {
           callLogger(logDebug, "Server does not support ranges for this request");
+          serverAcceptsRanges = false;
         }
-        serverAcceptsRanges = false;
       }
 
       callLogger(
