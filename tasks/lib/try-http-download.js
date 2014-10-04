@@ -426,8 +426,8 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
       case HTTP_STATUS_PRECONDITION_FAILED:
       case HTTP_STATUS_REQUESTED_RANGE_NOT_SATISFIABLE:
         callLogger(logVerbose, "File has changed on server side. Restarting...");
-        localEtag = false;
-        remoteEtag = false;
+        localEtag = null;
+        remoteEtag = null;
         doRequest();
         return;
 
