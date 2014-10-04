@@ -310,7 +310,7 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
         callLogger(
           logVerbose,
           "Attempts remaining: %d. Retrying...",
-          error, retries
+          retries
         );
         retries--;
         resume();
@@ -356,24 +356,16 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
   };
 
   var doRequest = function (headers) {
-    callLogger(logDebug, "Request %j", headers);
-    requestFunction(headers || { }, function (requestError, response) {
-      var outputStream,
-        responseHeaders = (response && response.headers) || { };
+    headers = headers || { };
+    callLogger(logDebug, "Request %j", headers );
+    requestFunction(headers, function (requestError, response) {
+      var responseHeaders = (response && response.headers) || { },
+          outputStream;
 
       if (requestError) {
         callLogger(logError, "Request error: %j", requestError);
         checkRetry(requestError);
         return;
-      }
-
-      callLogger(logDebug, "Response headers: %j", responseHeaders);
-
-      if (serverAcceptsRanges) {
-        if (responseHeaders["accept-ranges"] === "none") {
-          callLogger(logDebug, "Server does not support ranges for this request");
-          serverAcceptsRanges = false;
-        }
       }
 
       callLogger(
@@ -382,6 +374,14 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
         response.statusCode,
         httpCodeToMessage(response.statusCode)
       );
+      callLogger(logDebug, "Headers: %j", responseHeaders);
+
+      if (serverAcceptsRanges) {
+        if (responseHeaders["accept-ranges"] === "none") {
+          callLogger(logDebug, "Server does not support ranges for this request");
+          serverAcceptsRanges = false;
+        }
+      }
 
       var etagResult = parseEntityTag(responseHeaders["etag"]);
       remoteEtag = (etagResult && etagResult.tag) || null;
