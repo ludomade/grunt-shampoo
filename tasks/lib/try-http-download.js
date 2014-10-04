@@ -296,7 +296,7 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
         }
         doRequest(resumeOffset > 0 ? {
           "If-Match": formatEntityTag(remoteEtag),
-          "If-Range": requestRangeFrom(resumeOffset)
+          "Range":    requestRangeFrom(resumeOffset)
         } : null);
       });
     } else {
