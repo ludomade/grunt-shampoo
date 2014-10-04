@@ -120,7 +120,7 @@ function formatEntityTag(tag, isWeak) {
 
 
 function parseRangeResponse(rangeString) {
-  var match = /^bytes (?:\d+-\d+|\*)\/(?:\d+|\*)$/ .exec(String(rangeString));
+  var match = /^bytes ((\d+)-(\d+)|\*)\/(\d+|\*)$/ .exec(String(rangeString));
   if (!match) {
     return null;
   }
@@ -133,15 +133,14 @@ function parseRangeResponse(rangeString) {
   if (match[1] === "*") {
     result.hasRange = false;
   } else {
-    var range = match[1].split("-");
-    result.first = parseInt(range[0], 10);
-    result.last =  parseInt(range[1], 10);
+    result.first = parseInt(match[2], 10);
+    result.last =  parseInt(match[3], 10);
   }
 
-  if (match[2] === "*") {
+  if (match[4] === "*") {
     result.hasLength = false;
   } else {
-    result.length = parseInt(match[2]);
+    result.length = parseInt(match[4], 10);
   }
 
   return result;
