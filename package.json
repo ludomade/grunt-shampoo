@@ -1,7 +1,7 @@
 {
   "name": "grunt-shampoo",
   "description": "Retrieve content from the Shampoo CMS API on shampoo.io.",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "homepage": "https://github.com/soapcreative/grunt-shampoo",
   "author": {
     "name": "Mike Chang",
