@@ -40,6 +40,11 @@ var DEFAULT_RETRIES = 6,
     M0600 = parseInt("600", 8),
     M0644 = parseInt("644", 8),
 
+    RETRIABLE_SYSCALL_ERRORS = {
+      ECONNRESET: true,
+      ETIMEDOUT:  true
+    },
+
     _moduleTempDir = null,
     _tempFileId = 0;
 
@@ -155,7 +160,7 @@ function makeHttpErrorObject(httpCode) {
 
 
 function isRetriableError(error) {
-  return error && error.code === "ECONNRESET";
+  return Boolean(error && RETRIABLE_SYSCALL_ERRORS[error.code]);
 }
 
 
