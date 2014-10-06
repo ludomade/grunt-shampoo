@@ -8,6 +8,16 @@
     "email": "chang@soapcreative.com",
     "url": "http://soapcreative.com/us"
   },
+  "contributors": [
+    {
+      "name": "George Huber",
+      "email": "huber@soapcreative.com"
+    },
+    {
+      "name": "Jim Boswell",
+      "email": "boswell@soapcreative.com"
+    }
+  ],
   "repository": {
     "type": "git",
     "url": "git://github.com/soapcreative/grunt-shampoo"
