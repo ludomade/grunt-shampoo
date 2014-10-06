@@ -140,23 +140,19 @@ module.exports = function( grunt ) {
       unzipper
         .once("extract", function (log) {
           grunt.log.debug("%s extract log:\n%j", zipPath, log);
-          if (options.mediaOut != null) {
-            var extractedFiles = log.map(function (extractResult) {
-                return extractResult.deflated || extractResult.stored;
-              }).filter(function (extractedPath) {
-                return Boolean(extractedPath);
-              }).map(function (extractedPath) {
-                return path.join(options.zipOut, extractedPath);
-              });
+          var extractedFiles = log.map(function (extractResult) {
+              return extractResult.deflated || extractResult.stored;
+            }).filter(function (extractedPath) {
+              return Boolean(extractedPath);
+            }).map(function (extractedPath) {
+              return path.join(options.zipOut, extractedPath);
+            });
 
-            if (extractedFiles.length > 0) {
-              processJsonFiles(extractedFiles, options, callback);
-              return;
-            }
+          if (extractedFiles.length > 0) {
+            processJsonFiles(extractedFiles, options, callback);
+          } else {
+            callback();
           }
-          // fell through to here because options.mediaOut was not set,
-          // or the zip file contained no usable files
-          callback();
         })
         .once("error", function(error) {
           grunt.log.error("Error unzipping file %j: %s", zipPath, error);
@@ -275,14 +271,13 @@ module.exports = function( grunt ) {
 
     function processJson(jsonContent, outJsonFile, options, callback) {
       var result = getMediaAssets(jsonContent, options.mediaCwd);
-      if (outJsonFile) {
-        writeJsonFile(outJsonFile, result.newJson);
-        if (options.mediaOut != null) {
-          saveMedia(options, result.remotePaths, callback);
-          return;
-        }
+
+      writeJsonFile(outJsonFile, result.newJson);
+      if (options.downloadMedia) {
+        saveMedia(options, result.remotePaths, callback);
+      } else {
+        callback();
       }
-      callback();
     }
 
 
@@ -330,6 +325,7 @@ module.exports = function( grunt ) {
         out: "data/content.json",
         mediaOut: null,
         mediaCwd: null,
+        downloadMedia: null,
         maxConnections: DEFAULT_MAX_CONNECTIONS
       }));
 
@@ -364,6 +360,27 @@ module.exports = function( grunt ) {
           "The query %j returns a zip file. This requires the 'zipOut' option to be set.",
           options.query
         ));
+      }
+
+      // downloadMedia is now an explicit option, but i've tried to add it in
+      // a backwards compatible way. this, however, means its default value
+      // can change:
+      // - if mediaOut is specified, it defaults to true
+      // - if mediaOut is null or undefined, it defaults to false
+      //
+      // this mimics pre-v0.0.14 behavior that would use the presence of the
+      // mediaOut option to decide whether to download media files.
+      //
+      // this is done so gruntfiles with unspecified mediaOut values don't
+      // start suddenly downloading everything to the current directory after
+      // upgrading, but it will be best to explicitly set the downloadMedia
+      // option
+      if (options.downloadMedia == null) {
+        options.downloadMedia = options.mediaOut != null;
+      }
+
+      if (options.mediaOut == null) {
+        options.mediaOut = ".";
       }
 
       if (options.mediaCwd == null) {
