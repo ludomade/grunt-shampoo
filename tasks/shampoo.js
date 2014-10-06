@@ -40,13 +40,13 @@ module.exports = function( grunt ) {
         handlerFilter = createHandlerFilter(grunt),
         knoxClient = null;
 
-    function mkdirp(path, options, callback) {
+    function mkdirp(dirPath, options, callback) {
       if (typeof options === 'function') {
         callback = options;
         options = null;
       }
-      _mkdirp(path, options,
-        handlerFilter.logErrors("Couldn't create " + path, callback)
+      _mkdirp(dirPath, options,
+        handlerFilter.logErrors("Couldn't create " + dirPath, callback)
       );
     }
 
@@ -143,10 +143,10 @@ module.exports = function( grunt ) {
           if (options.mediaOut != null) {
             var extractedFiles = log.map(function (extractResult) {
                 return extractResult.deflated || extractResult.stored;
-              }).filter(function (path) {
-                return Boolean(path);
-              }).map(function (path) {
-                return path.join(options.zipOut, path);
+              }).filter(function (extractedPath) {
+                return Boolean(extractedPath);
+              }).map(function (extractedPath) {
+                return path.join(options.zipOut, extractedPath);
               });
 
             if (extractedFiles.length > 0) {
@@ -170,7 +170,7 @@ module.exports = function( grunt ) {
       return ZIP_FILE_NAME_PREFIX + Date.now() + ".zip";
     }
 
-    function requestZip(url, options, callback) {
+    function requestZip(zipUrl, options, callback) {
       var zipPath = path.join(
         options.zipOut, ZIP_FOLDER_NAME, generateZipFileName());
 
@@ -181,7 +181,7 @@ module.exports = function( grunt ) {
         }
 
         grunt.verbose.writeln("Downloading zip");
-        shampooUtils.downloadToFile(url, zipPath, handlerFilter.expectHttpOk(url,
+        shampooUtils.downloadToFile(zipUrl, zipPath, handlerFilter.expectHttpOk(zipUrl,
           function (error) {
             if (error) {
               callback();
@@ -286,8 +286,8 @@ module.exports = function( grunt ) {
     }
 
 
-    function requestJson(url, options, callback) {
-      request(url, handlerFilter.expectJsonResponse(url,
+    function requestJson(jsonUrl, options, callback) {
+      request(jsonUrl, handlerFilter.expectJsonResponse(jsonUrl,
         function (error, response, jsonContent) {
           if (error) {
             callback();
@@ -302,15 +302,15 @@ module.exports = function( grunt ) {
     function requestFiles(options, callback) {
       grunt.log.subhead( "Retrieving content..." );
 
-      var url = shampooApi.createApiUrl(options);
-      grunt.verbose.writeln("Url is %j", url);
+      var apiUrl = shampooApi.createApiUrl(options);
+      grunt.verbose.writeln("Url is %j", apiUrl);
 
       if (shampooApi.isZipQuery(options.query)) {
         grunt.verbose.writeln("Zip job");
-        requestZip(url, options, callback);
+        requestZip(apiUrl, options, callback);
       } else {
         grunt.verbose.writeln("JSON job");
-        requestJson(url, options, callback);
+        requestJson(apiUrl, options, callback);
       }
     }
 
