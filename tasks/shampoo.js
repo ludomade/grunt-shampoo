@@ -336,6 +336,7 @@ module.exports = function( grunt ) {
       var messages = [ ];
       var missing = { };
       var required = [ "key", "secret", "domain", "query", "out" ];
+      var isOk = true;
 
       if (shampooApi.isZipQuery(options.query)) {
         required.push("zipOut");
@@ -351,6 +352,7 @@ module.exports = function( grunt ) {
       if (missingArray.length > 0) {
         messages.push("The following required options are not set: " +
           missingArray.join(", "));
+        isOk = false;
       }
 
       if (missing.key || missing.secret) {
@@ -386,7 +388,7 @@ module.exports = function( grunt ) {
       return {
         options: options,
         messages: messages,
-        ok: messages.length === 0
+        ok: isOk
       };
     }
 
