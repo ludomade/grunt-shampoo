@@ -25,7 +25,7 @@ function createHandlerFilter(grunt) {
 	function _expectHttpCode(codeArray, handler) {
 		return function (/* error, response, ... */) {
 			var args = argsToArray(arguments);
-			if (!args[0]) {
+			if (!args[0] && args[1]) {
 				if (codeArray.indexOf(args[1].statusCode) < 0) {
 					var error = new Error("HTTP code " + args[1].statusCode);
 					error.statusCode = args[1].statusCode;
