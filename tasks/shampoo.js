@@ -378,6 +378,12 @@ module.exports = function( grunt ) {
         options.downloadMedia = options.mediaOut != null;
       }
 
+      // allow temporary override via command line
+      // specify --shampoo-no-download
+      if (grunt.option("shampoo-no-download")) {
+        options.downloadMedia = false;
+      }
+
       if (options.mediaOut == null) {
         options.mediaOut = ".";
       }
