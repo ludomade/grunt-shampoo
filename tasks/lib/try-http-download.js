@@ -18,18 +18,12 @@
 // 15.   If ECONNRESET, goto 5
 
 var fs = require("fs"),
-    http = require("http"),
+    httpCodes = require("./http-codes"),
     path = require("path"),
     tmp = require("tmp"),
     util = require("util");
 
 var DEFAULT_RETRIES = 6,
-
-    HTTP_STATUS_OK = 200,
-    HTTP_STATUS_PARTIAL_CONTENT = 206,
-    HTTP_STATUS_NOT_MODIFIED = 304,
-    HTTP_STATUS_PRECONDITION_FAILED = 412,
-    HTTP_STATUS_REQUESTED_RANGE_NOT_SATISFIABLE = 416,
 
     // number of bytes to back up when resuming
     RESUME_REWIND = 2,
@@ -361,7 +355,7 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
         logVerbose,
         "Response: %d %s",
         response.statusCode,
-        http.STATUS_CODES[response.statusCode] || "Unknown"
+        httpCodes.stringify(response.statusCode)
       );
       callLogger(logDebug, "Headers: %j", responseHeaders);
 
@@ -379,12 +373,12 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
       }
 
       switch (response.statusCode) {
-      case HTTP_STATUS_OK:
+      case httpCodes.OK:
         // truncate local file and open
         outputStream = fs.createWriteStream(fsPath, { mode: M0600 });
         break;
 
-      case HTTP_STATUS_PARTIAL_CONTENT:
+      case httpCodes.PARTIAL_CONTENT:
         // check header and seek into local file
         var range = parseRangeResponse(responseHeaders["content-range"]);
         if (range && range.hasRange) {
@@ -407,13 +401,13 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
         }
         break;
 
-      case HTTP_STATUS_NOT_MODIFIED:
+      case httpCodes.NOT_MODIFIED:
         // nothing: success
         callback(null, response);
         return;
 
-      case HTTP_STATUS_PRECONDITION_FAILED:
-      case HTTP_STATUS_REQUESTED_RANGE_NOT_SATISFIABLE:
+      case httpCodes.PRECONDITION_FAILED:
+      case httpCodes.REQUESTED_RANGE_NOT_SATISFIABLE:
         callLogger(logVerbose, "File has changed on server side. Restarting...");
         localEtag = null;
         remoteEtag = null;

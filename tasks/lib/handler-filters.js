@@ -1,5 +1,10 @@
 "use strict";
 
+
+var httpCodes = require("./http-codes"),
+	util = require("util");
+
+
 function argsToArray(args) {
 	var array = [ ];
 	for (var i = 0; i < args.length; i++) {
@@ -37,7 +42,7 @@ function createHandlerFilter(grunt) {
 	}
 
 	function _expectHttpOk(handler) {
-		return _expectHttpCode([200, 304], handler);
+		return _expectHttpCode([httpCodes.OK, httpCodes.NOT_MODIFIED], handler);
 	}
 
 	function _expectJsonAtArgument(jsonArgNum, handler) {

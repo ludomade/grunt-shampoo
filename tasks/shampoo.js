@@ -23,9 +23,8 @@ var request = require("request"),
     shampooApi = require('./lib/shampoo-api'),
     shampooUtils = require('./lib/shampoo-utils'),
     createHandlerFilter = require('./lib/handler-filters'),
+    httpCodes = require('./lib/http-codes'),
     tryHttpDownload = require('./lib/try-http-download');
-
-var HTTP_STATUS_NOT_MODIFIED = 304;
 
 var ZIP_FOLDER_NAME = "content-backups",
     ZIP_FILE_NAME_PREFIX = "content-dump-";
@@ -250,7 +249,7 @@ module.exports = function( grunt ) {
                 grunt.log.write("%s ", localPath);
                 if (error) {
                   grunt.log.error("%j", error);
-                } else if (response.statusCode === HTTP_STATUS_NOT_MODIFIED) {
+                } else if (response.statusCode === httpCodes.NOT_MODIFIED) {
                   grunt.log.ok("up to date");
                 } else {
                   grunt.log.ok("downloaded");
