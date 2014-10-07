@@ -255,7 +255,7 @@ tryHttpDownload = function (requestFunction, localPath, options, callback) {
 };
 
 _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callback) {
-  var retries = DEFAULT_RETRIES,
+  var retries = options.retries,
       localEtag = options.etag,
       remoteEtag = null,
 
