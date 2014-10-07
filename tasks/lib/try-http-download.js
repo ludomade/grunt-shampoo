@@ -255,7 +255,8 @@ tryHttpDownload = function (requestFunction, localPath, options, callback) {
 };
 
 _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callback) {
-  var retries = options.retries,
+  var totalRetries = options.retries,
+      retriesLeft = totalRetries,
       localEtag = options.etag,
       remoteEtag = null,
 
@@ -289,13 +290,15 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
 
   var checkRetry = function (error) {
     if (isRetriableError(error)) {
-      if (retries > 0) {
+      if (retriesLeft > 0) {
+        retriesLeft--;
         callLogger(
-          logVerbose,
-          "Attempts remaining: %d. Retrying...",
-          retries
+          logError,
+          "Retrying %s (%d/%d)",
+          finalPath,
+          totalRetries - retriesLeft,
+          totalRetries
         );
-        retries--;
         resume();
         return;
       } else {
