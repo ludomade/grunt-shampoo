@@ -368,9 +368,7 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
 
       var etagResult = parseEntityTag(responseHeaders["etag"]);
       remoteEtag = (etagResult && etagResult.tag) || null;
-      if (remoteEtag) {
-        callLogger(logDebug, "remoteEtag: %j", remoteEtag);
-      }
+      callLogger(logDebug, "remoteEtag: %j", remoteEtag);
 
       switch (response.statusCode) {
       case httpCodes.OK:
