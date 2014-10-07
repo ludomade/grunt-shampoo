@@ -31,9 +31,13 @@ function createHandlerFilter(grunt) {
 		return function (/* error, response, ... */) {
 			var args = argsToArray(arguments);
 			if (!args[0] && args[1]) {
-				if (codeArray.indexOf(args[1].statusCode) < 0) {
-					var error = new Error("HTTP code " + args[1].statusCode);
-					error.statusCode = args[1].statusCode;
+				var responseCode = args[1].statusCode;
+				if (codeArray.indexOf(responseCode) < 0) {
+					var responseMessage = httpCodes.stringify(responseCode);
+					var error = new Error(util.format(
+						"HTTP %d: %s", responseCode, responseMessage));
+					error.statusCode = responseCode;
+					error.statusMessage = responseMessage;
 					args[0] = error;
 				}
 			}
