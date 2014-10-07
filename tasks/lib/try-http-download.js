@@ -278,13 +278,10 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
             resumeOffset = Math.max(0, stats.size - RESUME_REWIND);
           } // else it's not a file, just let that fail later
         }
-        doRequest(resumeOffset > 0 ? {
-          "If-Match": formatEntityTag(remoteEtag),
-          "Range":    requestRangeFrom(resumeOffset)
-        } : null);
+        doResumeRequest(resumeOffset);
       });
     } else {
-      doRequest();
+      doUserRequest();
     }
   };
 
@@ -377,11 +374,13 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
 
       switch (response.statusCode) {
       case httpCodes.OK:
+        localEtag = null;
         // truncate local file and open
         outputStream = fs.createWriteStream(fsPath, { mode: M0600 });
         break;
 
       case httpCodes.PARTIAL_CONTENT:
+        localEtag = null;
         // check header and seek into local file
         var range = parseRangeResponse(responseHeaders["content-range"]);
         if (range && range.hasRange) {
@@ -418,6 +417,7 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
         return;
 
       default:
+        localEtag = null;
         callLogger(logError, "HTTP code %d", response.statusCode);
         callback(makeHttpErrorObject(response.statusCode));
         return;
@@ -446,9 +446,20 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
     });
   };
 
-  doRequest(localEtag ? {
-    "If-None-Match": formatEntityTag(localEtag)
-  } : null);
+  var doUserRequest = function () {
+    doRequest(localEtag ? {
+      "If-None-Match": formatEntityTag(localEtag)
+    } : null);
+  };
+
+  var doResumeRequest = function (resumeOffset) {
+    doRequest(resumeOffset > 0 ? {
+      "If-Match": formatEntityTag(remoteEtag),
+      "Range":    requestRangeFrom(resumeOffset)
+    } : null);
+  };
+
+  doUserRequest();
 };
 
 module.exports = tryHttpDownload;
