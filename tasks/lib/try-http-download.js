@@ -18,9 +18,10 @@
 // 15.   If ECONNRESET, goto 5
 
 var fs = require("fs"),
-    util = require("util"),
+    http = require("http"),
+    path = require("path"),
     tmp = require("tmp"),
-    path = require("path");
+    util = require("util");
 
 var DEFAULT_RETRIES = 6,
 
@@ -29,9 +30,6 @@ var DEFAULT_RETRIES = 6,
     HTTP_STATUS_NOT_MODIFIED = 304,
     HTTP_STATUS_PRECONDITION_FAILED = 412,
     HTTP_STATUS_REQUESTED_RANGE_NOT_SATISFIABLE = 416,
-
-    // lookup for stringifying http codes
-    HTTP_TO_MESSAGE = null,
 
     // number of bytes to back up when resuming
     RESUME_REWIND = 2,
@@ -47,20 +45,6 @@ var DEFAULT_RETRIES = 6,
 
     _moduleTempDir = null,
     _tempFileId = 0;
-
-
-function httpCodeToMessage(code) {
-  if (!HTTP_TO_MESSAGE) {
-    var h = { };
-    h[HTTP_STATUS_OK] = "OK";
-    h[HTTP_STATUS_PARTIAL_CONTENT] = "Partial content";
-    h[HTTP_STATUS_NOT_MODIFIED] = "Not modified";
-    h[HTTP_STATUS_PRECONDITION_FAILED] = "Precondition failed";
-    h[HTTP_STATUS_REQUESTED_RANGE_NOT_SATISFIABLE] = "Requested range not satisfiable";
-    HTTP_TO_MESSAGE = h;
-  }
-  return HTTP_TO_MESSAGE[code] || "";
-}
 
 
 function getTempDir(callback) {
@@ -377,7 +361,7 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
         logVerbose,
         "Response: %d %s",
         response.statusCode,
-        httpCodeToMessage(response.statusCode)
+        http.STATUS_CODES[response.statusCode] || "Unknown"
       );
       callLogger(logDebug, "Headers: %j", responseHeaders);
 
