@@ -1,8 +1,8 @@
 {
   "name": "grunt-shampoo",
   "description": "Retrieve content from the Shampoo CMS API on shampoo.io.",
-  "version": "0.0.13",
-  "homepage": "https://github.com/ludomade/grunt-shampoo",
+  "version": "0.0.14-alpha",
+  "homepage": "https://github.com/soapcreative/grunt-shampoo",
   "author": {
     "name": "Mike Chang",
     "email": "chang@ludomade.com",

@@ -18,20 +18,12 @@
 // 15.   If ECONNRESET, goto 5
 
 var fs = require("fs"),
-    util = require("util"),
+    httpCodes = require("./http-codes"),
+    path = require("path"),
     tmp = require("tmp"),
-    path = require("path");
+    util = require("util");
 
 var DEFAULT_RETRIES = 6,
-
-    HTTP_STATUS_OK = 200,
-    HTTP_STATUS_PARTIAL_CONTENT = 206,
-    HTTP_STATUS_NOT_MODIFIED = 304,
-    HTTP_STATUS_PRECONDITION_FAILED = 412,
-    HTTP_STATUS_REQUESTED_RANGE_NOT_SATISFIABLE = 416,
-
-    // lookup for stringifying http codes
-    HTTP_TO_MESSAGE = null,
 
     // number of bytes to back up when resuming
     RESUME_REWIND = 2,
@@ -40,22 +32,13 @@ var DEFAULT_RETRIES = 6,
     M0600 = parseInt("600", 8),
     M0644 = parseInt("644", 8),
 
+    RETRIABLE_SYSCALL_ERRORS = {
+      ECONNRESET: true,
+      ETIMEDOUT:  true
+    },
+
     _moduleTempDir = null,
     _tempFileId = 0;
-
-
-function httpCodeToMessage(code) {
-  if (!HTTP_TO_MESSAGE) {
-    var h = { };
-    h[HTTP_STATUS_OK] = "OK";
-    h[HTTP_STATUS_PARTIAL_CONTENT] = "Partial content";
-    h[HTTP_STATUS_NOT_MODIFIED] = "Not modified";
-    h[HTTP_STATUS_PRECONDITION_FAILED] = "Precondition failed";
-    h[HTTP_STATUS_REQUESTED_RANGE_NOT_SATISFIABLE] = "Requested range not satisfiable";
-    HTTP_TO_MESSAGE = h;
-  }
-  return HTTP_TO_MESSAGE[code] || "";
-}
 
 
 function getTempDir(callback) {
@@ -155,7 +138,7 @@ function makeHttpErrorObject(httpCode) {
 
 
 function isRetriableError(error) {
-  return error && error.code === "ECONNRESET";
+  return Boolean(error && RETRIABLE_SYSCALL_ERRORS[error.code]);
 }
 
 
@@ -272,7 +255,8 @@ tryHttpDownload = function (requestFunction, localPath, options, callback) {
 };
 
 _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callback) {
-  var retries = DEFAULT_RETRIES,
+  var totalRetries = options.retries,
+      retriesLeft = totalRetries,
       localEtag = options.etag,
       remoteEtag = null,
 
@@ -294,25 +278,24 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
             resumeOffset = Math.max(0, stats.size - RESUME_REWIND);
           } // else it's not a file, just let that fail later
         }
-        doRequest(resumeOffset > 0 ? {
-          "If-Match": formatEntityTag(remoteEtag),
-          "Range":    requestRangeFrom(resumeOffset)
-        } : null);
+        doResumeRequest(resumeOffset);
       });
     } else {
-      doRequest();
+      doUserRequest();
     }
   };
 
   var checkRetry = function (error) {
     if (isRetriableError(error)) {
-      if (retries > 0) {
+      if (retriesLeft > 0) {
+        retriesLeft--;
         callLogger(
-          logVerbose,
-          "Attempts remaining: %d. Retrying...",
-          retries
+          logError,
+          "Retrying %s (%d/%d)",
+          finalPath,
+          totalRetries - retriesLeft,
+          totalRetries
         );
-        retries--;
         resume();
         return;
       } else {
@@ -372,7 +355,7 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
         logVerbose,
         "Response: %d %s",
         response.statusCode,
-        httpCodeToMessage(response.statusCode)
+        httpCodes.stringify(response.statusCode)
       );
       callLogger(logDebug, "Headers: %j", responseHeaders);
 
@@ -385,17 +368,17 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
 
       var etagResult = parseEntityTag(responseHeaders["etag"]);
       remoteEtag = (etagResult && etagResult.tag) || null;
-      if (remoteEtag) {
-        callLogger(logDebug, "remoteEtag: %j", remoteEtag);
-      }
+      callLogger(logDebug, "remoteEtag: %j", remoteEtag);
 
       switch (response.statusCode) {
-      case HTTP_STATUS_OK:
+      case httpCodes.OK:
+        localEtag = null;
         // truncate local file and open
         outputStream = fs.createWriteStream(fsPath, { mode: M0600 });
         break;
 
-      case HTTP_STATUS_PARTIAL_CONTENT:
+      case httpCodes.PARTIAL_CONTENT:
+        localEtag = null;
         // check header and seek into local file
         var range = parseRangeResponse(responseHeaders["content-range"]);
         if (range && range.hasRange) {
@@ -418,13 +401,13 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
         }
         break;
 
-      case HTTP_STATUS_NOT_MODIFIED:
+      case httpCodes.NOT_MODIFIED:
         // nothing: success
         callback(null, response);
         return;
 
-      case HTTP_STATUS_PRECONDITION_FAILED:
-      case HTTP_STATUS_REQUESTED_RANGE_NOT_SATISFIABLE:
+      case httpCodes.PRECONDITION_FAILED:
+      case httpCodes.REQUESTED_RANGE_NOT_SATISFIABLE:
         callLogger(logVerbose, "File has changed on server side. Restarting...");
         localEtag = null;
         remoteEtag = null;
@@ -432,6 +415,7 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
         return;
 
       default:
+        localEtag = null;
         callLogger(logError, "HTTP code %d", response.statusCode);
         callback(makeHttpErrorObject(response.statusCode));
         return;
@@ -460,9 +444,20 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
     });
   };
 
-  doRequest(localEtag ? {
-    "If-None-Match": formatEntityTag(localEtag)
-  } : null);
+  var doUserRequest = function () {
+    doRequest(localEtag ? {
+      "If-None-Match": formatEntityTag(localEtag)
+    } : null);
+  };
+
+  var doResumeRequest = function (resumeOffset) {
+    doRequest(resumeOffset > 0 ? {
+      "If-Match": formatEntityTag(remoteEtag),
+      "Range":    requestRangeFrom(resumeOffset)
+    } : null);
+  };
+
+  doUserRequest();
 };
 
 module.exports = tryHttpDownload;

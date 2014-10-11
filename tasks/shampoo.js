@@ -23,9 +23,8 @@ var request = require("request"),
     shampooApi = require('./lib/shampoo-api'),
     shampooUtils = require('./lib/shampoo-utils'),
     createHandlerFilter = require('./lib/handler-filters'),
+    httpCodes = require('./lib/http-codes'),
     tryHttpDownload = require('./lib/try-http-download');
-
-var HTTP_STATUS_NOT_MODIFIED = 304;
 
 var ZIP_FOLDER_NAME = "content-backups",
     ZIP_FILE_NAME_PREFIX = "content-dump-";
@@ -40,13 +39,13 @@ module.exports = function( grunt ) {
         handlerFilter = createHandlerFilter(grunt),
         knoxClient = null;
 
-    function mkdirp(path, options, callback) {
+    function mkdirp(dirPath, options, callback) {
       if (typeof options === 'function') {
         callback = options;
         options = null;
       }
-      _mkdirp(path, options,
-        handlerFilter.logErrors("Couldn't create " + path, callback)
+      _mkdirp(dirPath, options,
+        handlerFilter.logErrors("Couldn't create " + dirPath, callback)
       );
     }
 
@@ -140,23 +139,19 @@ module.exports = function( grunt ) {
       unzipper
         .once("extract", function (log) {
           grunt.log.debug("%s extract log:\n%j", zipPath, log);
-          if (options.mediaOut != null) {
-            var extractedFiles = log.map(function (extractResult) {
-                return extractResult.deflated || extractResult.stored;
-              }).filter(function (path) {
-                return Boolean(path);
-              }).map(function (path) {
-                return path.join(options.zipOut, path);
-              });
+          var extractedFiles = log.map(function (extractResult) {
+              return extractResult.deflated || extractResult.stored;
+            }).filter(function (extractedPath) {
+              return Boolean(extractedPath);
+            }).map(function (extractedPath) {
+              return path.join(options.zipOut, extractedPath);
+            });
 
-            if (extractedFiles.length > 0) {
-              processJsonFiles(extractedFiles, options, callback);
-              return;
-            }
+          if (extractedFiles.length > 0) {
+            processJsonFiles(extractedFiles, options, callback);
+          } else {
+            callback();
           }
-          // fell through to here because options.mediaOut was not set,
-          // or the zip file contained no usable files
-          callback();
         })
         .once("error", function(error) {
           grunt.log.error("Error unzipping file %j: %s", zipPath, error);
@@ -170,7 +165,7 @@ module.exports = function( grunt ) {
       return ZIP_FILE_NAME_PREFIX + Date.now() + ".zip";
     }
 
-    function requestZip(url, options, callback) {
+    function requestZip(zipUrl, options, callback) {
       var zipPath = path.join(
         options.zipOut, ZIP_FOLDER_NAME, generateZipFileName());
 
@@ -181,7 +176,7 @@ module.exports = function( grunt ) {
         }
 
         grunt.verbose.writeln("Downloading zip");
-        shampooUtils.downloadToFile(url, zipPath, handlerFilter.expectHttpOk(url,
+        shampooUtils.downloadToFile(zipUrl, zipPath, handlerFilter.expectHttpOk(zipUrl,
           function (error) {
             if (error) {
               callback();
@@ -254,7 +249,7 @@ module.exports = function( grunt ) {
                 grunt.log.write("%s ", localPath);
                 if (error) {
                   grunt.log.error("%j", error);
-                } else if (response.statusCode === HTTP_STATUS_NOT_MODIFIED) {
+                } else if (response.statusCode === httpCodes.NOT_MODIFIED) {
                   grunt.log.ok("up to date");
                 } else {
                   grunt.log.ok("downloaded");
@@ -275,19 +270,18 @@ module.exports = function( grunt ) {
 
     function processJson(jsonContent, outJsonFile, options, callback) {
       var result = getMediaAssets(jsonContent, options.mediaCwd);
-      if (outJsonFile) {
-        writeJsonFile(outJsonFile, result.newJson);
-        if (options.mediaOut != null) {
-          saveMedia(options, result.remotePaths, callback);
-          return;
-        }
+
+      writeJsonFile(outJsonFile, result.newJson);
+      if (options.downloadMedia) {
+        saveMedia(options, result.remotePaths, callback);
+      } else {
+        callback();
       }
-      callback();
     }
 
 
-    function requestJson(url, options, callback) {
-      request(url, handlerFilter.expectJsonResponse(url,
+    function requestJson(jsonUrl, options, callback) {
+      request(jsonUrl, handlerFilter.expectJsonResponse(jsonUrl,
         function (error, response, jsonContent) {
           if (error) {
             callback();
@@ -302,15 +296,15 @@ module.exports = function( grunt ) {
     function requestFiles(options, callback) {
       grunt.log.subhead( "Retrieving content..." );
 
-      var url = shampooApi.createApiUrl(options);
-      grunt.verbose.writeln("Url is %j", url);
+      var apiUrl = shampooApi.createApiUrl(options);
+      grunt.verbose.writeln("Url is %j", apiUrl);
 
       if (shampooApi.isZipQuery(options.query)) {
         grunt.verbose.writeln("Zip job");
-        requestZip(url, options, callback);
+        requestZip(apiUrl, options, callback);
       } else {
         grunt.verbose.writeln("JSON job");
-        requestJson(url, options, callback);
+        requestJson(apiUrl, options, callback);
       }
     }
 
@@ -330,12 +324,14 @@ module.exports = function( grunt ) {
         out: "data/content.json",
         mediaOut: null,
         mediaCwd: null,
+        downloadMedia: null,
         maxConnections: DEFAULT_MAX_CONNECTIONS
       }));
 
       var messages = [ ];
       var missing = { };
       var required = [ "key", "secret", "domain", "query", "out" ];
+      var isOk = true;
 
       if (shampooApi.isZipQuery(options.query)) {
         required.push("zipOut");
@@ -351,6 +347,7 @@ module.exports = function( grunt ) {
       if (missingArray.length > 0) {
         messages.push("The following required options are not set: " +
           missingArray.join(", "));
+        isOk = false;
       }
 
       if (missing.key || missing.secret) {
@@ -362,6 +359,33 @@ module.exports = function( grunt ) {
           "The query %j returns a zip file. This requires the 'zipOut' option to be set.",
           options.query
         ));
+      }
+
+      // downloadMedia is now an explicit option, but i've tried to add it in
+      // a backwards compatible way. this, however, means its default value
+      // can change:
+      // - if mediaOut is specified, it defaults to true
+      // - if mediaOut is null or undefined, it defaults to false
+      //
+      // this mimics pre-v0.0.14 behavior that would use the presence of the
+      // mediaOut option to decide whether to download media files.
+      //
+      // this is done so gruntfiles with unspecified mediaOut values don't
+      // start suddenly downloading everything to the current directory after
+      // upgrading, but it will be best to explicitly set the downloadMedia
+      // option
+      if (options.downloadMedia == null) {
+        options.downloadMedia = options.mediaOut != null;
+      }
+
+      // allow temporary override via command line
+      // specify --shampoo-no-download
+      if (grunt.option("shampoo-no-download")) {
+        options.downloadMedia = false;
+      }
+
+      if (options.mediaOut == null) {
+        options.mediaOut = ".";
       }
 
       if (options.mediaCwd == null) {
@@ -386,7 +410,7 @@ module.exports = function( grunt ) {
       return {
         options: options,
         messages: messages,
-        ok: messages.length === 0
+        ok: isOk
       };
     }
 

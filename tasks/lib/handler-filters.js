@@ -1,5 +1,10 @@
 "use strict";
 
+
+var httpCodes = require("./http-codes"),
+	util = require("util");
+
+
 function argsToArray(args) {
 	var array = [ ];
 	for (var i = 0; i < args.length; i++) {
@@ -25,10 +30,14 @@ function createHandlerFilter(grunt) {
 	function _expectHttpCode(codeArray, handler) {
 		return function (/* error, response, ... */) {
 			var args = argsToArray(arguments);
-			if (!args[0]) {
-				if (codeArray.indexOf(args[1].statusCode) < 0) {
-					var error = new Error("HTTP code " + args[1].statusCode);
-					error.statusCode = args[1].statusCode;
+			if (!args[0] && args[1]) {
+				var responseCode = args[1].statusCode;
+				if (codeArray.indexOf(responseCode) < 0) {
+					var responseMessage = httpCodes.stringify(responseCode);
+					var error = new Error(util.format(
+						"HTTP %d: %s", responseCode, responseMessage));
+					error.statusCode = responseCode;
+					error.statusMessage = responseMessage;
 					args[0] = error;
 				}
 			}
@@ -37,7 +46,7 @@ function createHandlerFilter(grunt) {
 	}
 
 	function _expectHttpOk(handler) {
-		return _expectHttpCode([200, 304], handler);
+		return _expectHttpCode([httpCodes.OK, httpCodes.NOT_MODIFIED], handler);
 	}
 
 	function _expectJsonAtArgument(jsonArgNum, handler) {
