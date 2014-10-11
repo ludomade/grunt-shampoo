@@ -2,33 +2,33 @@
   "name": "grunt-shampoo",
   "description": "Retrieve content from the Shampoo CMS API on shampoo.io.",
   "version": "0.0.13",
-  "homepage": "https://github.com/soapcreative/grunt-shampoo",
+  "homepage": "https://github.com/ludomade/grunt-shampoo",
   "author": {
     "name": "Mike Chang",
-    "email": "chang@soapcreative.com",
-    "url": "http://soapcreative.com/us"
+    "email": "chang@ludomade.com",
+    "url": "http://www.ludomade.com"
   },
   "contributors": [
     {
       "name": "George Huber",
-      "email": "huber@soapcreative.com"
+      "email": "huber@ludomade.com"
     },
     {
       "name": "Jim Boswell",
-      "email": "boswell@soapcreative.com"
+      "email": "boswell@ludomade.com"
     }
   ],
   "repository": {
     "type": "git",
-    "url": "git://github.com/soapcreative/grunt-shampoo"
+    "url": "git://github.com/ludomade/grunt-shampoo"
   },
   "bugs": {
-    "url": "https://github.com/soapcreative/grunt-shampoo/issues"
+    "url": "https://github.com/ludomade/grunt-shampoo/issues"
   },
   "licenses": [
     {
       "type": "MIT",
-      "url": "https://github.com/soapcreative/grunt-shampoo/blob/master/LICENSE-MIT"
+      "url": "https://github.com/ludomade/grunt-shampoo/blob/master/LICENSE-MIT"
     }
   ],
   "engines": {
