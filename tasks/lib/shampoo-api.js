@@ -1,8 +1,7 @@
 "use strict";
 
 var sha256 = require("sha256"),
-    querystring = require('querystring'),
-    _ = require('lodash');
+    querystring = require('querystring');
 
 
 var createToken =
@@ -38,10 +37,23 @@ exports.createApiUrl = function (options, requestId) {
     requestId = createRequestId();
   }
 
-  var queryParams = _.merge({
+  var queryParams = querystring.stringify({
       requestId: requestId,
       token: createToken(options.secret, options.key, requestId)
-    }, options.params || {});
+  });
+
+  var userParams = "";
+  if (options.params) {
+    if (typeof options.params === "string") {
+      userParams = options.params;
+    } else {
+      userParams = querystring.stringify(options.params);
+    }
+  }
+
+  if (userParams) {
+    queryParams += "&" + userParams;
+  }
 
   return url + "?" + querystring.stringify(queryParams);
 };
