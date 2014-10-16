@@ -55,5 +55,5 @@ exports.createApiUrl = function (options, requestId) {
     queryParams += "&" + userParams;
   }
 
-  return url + "?" + querystring.stringify(queryParams);
+  return url + "?" + queryParams;
 };
