@@ -463,7 +463,7 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
 
   var doResumeRequest = function (resumeOffset) {
     doRequest(resumeOffset > 0 ? {
-      "If-Match": formatEntityTag(remoteEtag),
+      "If-Range": formatEntityTag(remoteEtag),
       "Range":    requestRangeFrom(resumeOffset)
     } : null);
   };
