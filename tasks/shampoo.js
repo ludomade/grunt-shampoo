@@ -188,7 +188,7 @@ module.exports = function( grunt ) {
       });
     }
 
-    function saveMedia(options, mediaAssets, callback) {
+    function downloadMediaList(options, mediaAssets, callback) {
 
       grunt.log.subhead( "Retrieving files..." );
 
@@ -209,7 +209,7 @@ module.exports = function( grunt ) {
         } else {
           while (mediaAssets.length > 0 && loadCounter < options.maxConnections) {
             loadCounter++;
-            verifyDownload( mediaAssets.shift(), options.mediaOut, next );
+            downloadMediaItem( mediaAssets.shift(), options.mediaOut, options.replaceMedia, next );
           }
         }
       };
@@ -217,48 +217,67 @@ module.exports = function( grunt ) {
       fillQueue();
     }
 
-    function verifyDownload( remotePath, mediaOut, callback ) {
-      var localPath = path.join(mediaOut, remotePath),
-          tryOptions = {
-            logError:   grunt.log.error.bind(grunt.log),
-            logVerbose: grunt.verbose.writeln.bind(grunt.verbose),
-            logDebug:   grunt.log.debug.bind(grunt.log)
-          };
-
+    function downloadMediaItem( remotePath, mediaOut, replace, callback ) {
+      var localPath = path.join(mediaOut, remotePath);
+          
       grunt.log.debug("Verifying %j -> %j", remotePath, localPath);
 
-      shampooUtils.hashFile(localPath, "md5", function (error, hasher) {
-        if (error) {
-          grunt.log.debug("Etag calculation of local file failed: %s", error);
-        } else {
-          tryOptions.etag = hasher.digest("hex");
-        }
-
-        mkdirp(path.dirname(localPath), function (error) {
+      if (replace) {
+        grunt.log.debug("replaceMedia is true: Unlinking local file");
+        fs.unlink(localPath, function (error) {
           if (error) {
-            callback();
-          } else {
-            tryHttpDownload(
-              function (headers, tryCallback) {
-                grunt.log.debug("S3 GET %j", remotePath);
-                knoxClient.getFile(remotePath, headers, tryCallback);
-              },
-              localPath,
-              tryOptions,
-              function (error, response) {
-                grunt.log.write("%s ", localPath);
-                if (error) {
-                  grunt.log.error("%j", error);
-                } else if (response.statusCode === httpCodes.NOT_MODIFIED) {
-                  grunt.log.ok("up to date");
-                } else {
-                  grunt.log.ok("downloaded");
-                }
-                callback();
-              }
-            );
+            grunt.log.debug("Failed to unlink local file: %s", error);
           }
+          downloadWithEtag(remotePath, localPath, null, callback);
         });
+      } else {
+        shampooUtils.hashFile(localPath, "md5", function (error, hasher) {
+          var etag = null;
+          if (error) {
+            grunt.log.debug("Etag calculation of local file failed: %s", error);
+          } else {
+            etag = hasher.digest("hex");
+          }
+          downloadWithEtag(remotePath, localPath, etag, callback);
+        });
+      }
+    }
+
+    function downloadWithEtag(remotePath, localPath, etag, callback) {
+      var tryOptions = {
+        logError:   grunt.log.error.bind(grunt.log),
+        logVerbose: grunt.verbose.writeln.bind(grunt.verbose),
+        logDebug:   grunt.log.debug.bind(grunt.log)
+      };
+
+      if (etag) {
+        tryOptions.etag = etag;
+      }
+
+      mkdirp(path.dirname(localPath), function (error) {
+        if (error) {
+          callback();
+        } else {
+          tryHttpDownload(
+            function (headers, tryCallback) {
+              grunt.log.debug("S3 GET %j", remotePath);
+              knoxClient.getFile(remotePath, headers, tryCallback);
+            },
+            localPath,
+            tryOptions,
+            function (error, response) {
+              grunt.log.write("%s ", localPath);
+              if (error) {
+                grunt.log.error("%j", error);
+              } else if (response.statusCode === httpCodes.NOT_MODIFIED) {
+                grunt.log.ok("up to date");
+              } else {
+                grunt.log.ok("downloaded");
+              }
+              callback();
+            }
+          );
+        }
       });
     }
 
@@ -273,7 +292,7 @@ module.exports = function( grunt ) {
 
       writeJsonFile(outJsonFile, result.newJson);
       if (options.downloadMedia) {
-        saveMedia(options, result.remotePaths, callback);
+        downloadMediaList(options, result.remotePaths, callback);
       } else {
         callback();
       }
@@ -325,7 +344,8 @@ module.exports = function( grunt ) {
         mediaOut: null,
         mediaCwd: null,
         downloadMedia: null,
-        maxConnections: DEFAULT_MAX_CONNECTIONS
+        maxConnections: DEFAULT_MAX_CONNECTIONS,
+        replaceMedia: false
       }));
 
       var messages = [ ];
@@ -382,6 +402,19 @@ module.exports = function( grunt ) {
       // specify --shampoo-no-download
       if (grunt.option("shampoo-no-download")) {
         options.downloadMedia = false;
+      }
+
+      if (grunt.option("shampoo-replace-media")) {
+        options.replaceMedia = true;
+      }
+
+      if (options.replaceMedia !== false && options.replaceMedia !== true) {
+        messages.push("replaceMedia must be true or false. Defaulting to false.");
+        options.replaceMedia = false;
+      }
+
+      if (options.replaceMedia && !options.downloadMedia) {
+        messages.push("replaceMedia is true but downloadMedia is false. Media will not be downloaded.");
       }
 
       if (options.mediaOut == null) {
