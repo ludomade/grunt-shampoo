@@ -76,7 +76,7 @@ Type: `String`
 Default value: none
 Required
 
-The full domain name of your `shampoo.io` site. If your Shampoo installation is `http://soap.shampoo.io`, then you would enter in `soap.shampoo.io` here.
+The full domain name of your `shampoo.io` site. If your Shampoo installation is `http://ludomade.shampoo.io`, then you would enter in `ludomade.shampoo.io` here.
 
 #### options.api
 Type: `Number`

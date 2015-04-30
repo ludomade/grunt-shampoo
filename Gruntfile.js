@@ -1,8 +1,8 @@
 /*
  * grunt-shampoo
- * https://github.com/soapcreative/grunt-shampoo
+ * https://github.com/ludomade/grunt-shampoo
  *
- * Copyright (c) 2014 Soap Creative
+ * Copyright (c) 2015 Ludomade
  * Licensed under the MIT license.
  */
 
