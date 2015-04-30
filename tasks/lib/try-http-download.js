@@ -370,6 +370,9 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
       remoteEtag = (etagResult && etagResult.tag) || null;
       callLogger(logDebug, "remoteEtag: %j", remoteEtag);
 
+      // TODO: IDEA: verify downloads. filesize and hashing
+      // var expectedSize = parseInt(responseHeaders["content-length"], 10);
+
       switch (response.statusCode) {
       case httpCodes.OK:
         localEtag = null;
@@ -421,10 +424,20 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
         return;
       }
 
-      outputStream.once("error", function (writeError) {
-        callLogger(logError, "Write stream error: %j", writeError);
-        callback(writeError);
-      });
+      outputStream
+        .once("error", function (writeError) {
+          callLogger(logError, "Write stream error: %j", writeError);
+          callback(writeError);
+        })
+        .once("finish", function () {
+          callLogger(logDebug, "Write stream flushed");
+          // if (isFinite(expectedSize)) {
+            // TODO: verify size
+          // }
+          moveFile(fsPath, finalPath, function (moveError) {
+            callback(moveError, moveError ? null : response);
+          });
+        });
 
       response
         .once("error", function (responseError) {
@@ -434,10 +447,8 @@ _tryHttpDownload = function(requestFunction, fsPath, finalPath, options, callbac
           });
         })
         .once("end", function () {
+          callLogger(logDebug, "Response stream ended");
           callLogger(logVerbose, "Download complete");
-          moveFile(fsPath, finalPath, function (moveError) {
-            callback(moveError, moveError ? null : response);
-          });
         });
 
       response.pipe(outputStream);
