@@ -1,4 +1,5 @@
 var inquirer = require("inquirer");
+var open = require("open");
 
 module.exports = {
 
@@ -43,8 +44,9 @@ module.exports = {
 			scope: this.config.google.scopes // If you only need one scope you can pass it as string
 		});
 
-		this.grunt.log.writeln('Please authorize the google permissions request: ', url);
-		inquirer.prompt([{name: "oauthCode", message:"Enter the code supplied from your browser."}], function(response) {
+		this.grunt.log.writeln('We\'ve opened a browser window. Please authorize the google permissions request to connect to shampoo.');
+		open(url);
+		inquirer.prompt([{name: "oauthCode", message:"After authorized, enter the code supplied from your browser."}], function(response) {
 
 			//self.grunt.log.write("here's the response given" + response.oauthCode);
 			//callback(false);
@@ -107,7 +109,7 @@ module.exports = {
 		this.oauth2Client = new OAuth2(this.config.google.clientId, this.config.google.clientSecret, this.config.google.redirectUrl);
 		this.googleLib.options({ auth: this.oauth2Client });
 
-		if(this.config.google.tokens.accessToken.length && this.config.google.tokens.refreshToken.length) {
+		if(this.config.google.tokens.accessToken.length) {
 
 			//if we've saved down the access token in the .shampoo file
 			this.oauth2Client.setCredentials({
