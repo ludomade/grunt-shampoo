@@ -4,7 +4,7 @@ var open = require("open");
 module.exports = {
 
 	grunt: null,
-	asyncCallback: null,
+	taskCallback: null,
 	googleLib: null,
 	oauth2Client: null,
 
@@ -28,7 +28,7 @@ module.exports = {
 		//requires all these items in its "constructor".
 
 		this.grunt = params.grunt;
-		this.asyncCallback = params.asyncCallback;
+		this.taskCallback = params.taskCallback;
 		this.googleLib = params.googleLib;
 
 		this.testConfig();
@@ -89,13 +89,13 @@ module.exports = {
 
 		if(!this.config.google.clientId.length) {
 			this.grunt.log.error("Google clientId wasn't specified.  Please add a value to the key google.clientId in your .shampoo file.");
-			this.asyncCallback(false);
+			this.taskCallback(false);
 			return;
 		}
 
 		if(!this.config.google.clientSecret.length) {
 			this.grunt.log.error("Google clientSecret wasn't specified.  Please add a value to the key google.clientSecret in your .shampoo file.");
-			this.asyncCallback(false);
+			this.taskCallback(false);
 			return;
 		}
 
@@ -141,12 +141,12 @@ module.exports = {
 					self.oauth2Client.setCredentials(tokens);
 				}
 
-				self.grunt.file.write(".shampoo", JSON.stringify(self.config));
+				self.grunt.file.write(".shampoo", JSON.stringify(self.config, undefined, 4));
 
 				if(err) {
 
 					//tell grunt to fail
-					self.asyncCallback(false);
+					self.taskCallback(false);
 
 				} else {
 

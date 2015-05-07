@@ -31,7 +31,7 @@ module.exports = function(grunt) {
     // Configuration to be run (and then tested).
     shampoo: {
       options: {
-        documentId: "0B0DrlaR4h0bLYjlxaF9ZNzZuZEU",
+        documentId: "0B0DrlaR4h0bLZjEtNHA0QXhuRnM",
         activeLocales: [
           "en-US", "fr-FR"
         ]
