@@ -1,3 +1,5 @@
+var inquirer = require("inquirer");
+
 module.exports = {
 
 	grunt: null,
@@ -9,7 +11,7 @@ module.exports = {
 		google: {
 			clientId: "",
 			clientSecret: "", //this should be set by the .shampoo file overrides.
-			redirectUrl: "http://dev.shampoo.ludomade.net/oauthredirect",
+			redirectUrl: "http://dev.shampoo.ludomade.net/oauth2callback",
 			scopes: [
 				"https://www.googleapis.com/auth/drive.file"
 			],
@@ -35,20 +37,23 @@ module.exports = {
 	getAccessToken: function(callback) {
 		
 		// generate consent page url
-
+		var self = this;
 		var url = this.oauth2Client.generateAuthUrl({
 			access_type: 'offline', // 'online' (default) or 'offline' (gets refresh_token) 
 			scope: this.config.google.scopes // If you only need one scope you can pass it as string
 		});
 
-		this.grunt.log.write('Visit the url: ', url);
-		callback(false);
-		// rl.question('Enter the code here:', function(code) {
-		// 	// request access token
-		// 	oauth2Client.getToken(code, function(err, tokens) {
-		// 		callback(err,tokens);
-		// 	});
-		// });
+		this.grunt.log.writeln('Please authorize the google permissions request: ', url);
+		inquirer.prompt([{name: "oauthCode", message:"Enter the code supplied from your browser."}], function(response) {
+
+			//self.grunt.log.write("here's the response given" + response.oauthCode);
+			//callback(false);
+			self.oauth2Client.getToken(response.oauthCode, function(err, tokens) {
+				callback(err,tokens);
+			});
+
+		});
+
 	},
 
 	testConfig: function() {
@@ -96,48 +101,50 @@ module.exports = {
 
 	request: function(callBack) {
 
+		var self = this;
 		var OAuth2 = this.googleLib.auth.OAuth2;
 		
-		this.oauth2Client = new OAuth2(config.google.clientId, config.google.clientSecret, config.google.redirectUrl);
+		this.oauth2Client = new OAuth2(this.config.google.clientId, this.config.google.clientSecret, this.config.google.redirectUrl);
 		this.googleLib.options({ auth: this.oauth2Client });
 
-		if(config.google.tokens.accessToken.length && config.google.tokens.refreshToken.length) {
+		if(this.config.google.tokens.accessToken.length && this.config.google.tokens.refreshToken.length) {
 
 			//if we've saved down the access token in the .shampoo file
 			this.oauth2Client.setCredentials({
-				access_token: config.google.tokens.accessToken,
-				refresh_token: config.google.tokens.refreshToken
+				access_token: this.config.google.tokens.accessToken,
+				refresh_token: this.config.google.tokens.refreshToken
 			});
 			callBack();
 
 		} else {
 
 			//if auth hasn't been saved - or an error occured previously
-			auth.getAccessToken(function(err,tokens) {
+			this.getAccessToken(function(err,tokens) {
 
 				if(err) {
 					
-					this.grunt.log.error("Shampoo error: There was an error contacting the google auth.  Try again.");
+					self.grunt.log.error("Shampoo error: There was an error contacting the google auth.  Try again.");
 
 					//reset the tokens in the shampoo file.
-					config.google.tokens.accessToken = "";
-					config.google.tokens.refreshToken = "";
+					self.config.google.tokens.accessToken = "";
+					self.config.google.tokens.refreshToken = "";
 
 				} else {
 
 					//write the auth token and refresh token out to the .shampoo file
-					config.google.tokens.accessToken = tokens.access_token;
-					config.google.tokens.refreshToken = tokens.refresh_token;
+					self.grunt.log.writeln("Got your google access token, thanks.  Saving it down to your .shampoo file.")
+					self.config.google.tokens.accessToken = tokens.access_token;
+					self.config.google.tokens.refreshToken = tokens.refresh_token;
 
-					this.oauth2Client.setCredentials(tokens);
+					self.oauth2Client.setCredentials(tokens);
 				}
 
-				this.grunt.file.write(".shampoo", JSON.stringify(config));
+				self.grunt.file.write(".shampoo", JSON.stringify(self.config));
 
 				if(err) {
 
 					//tell grunt to fail
-					this.asyncCallback(false);
+					self.asyncCallback(false);
 
 				} else {
 
