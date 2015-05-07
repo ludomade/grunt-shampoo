@@ -32,6 +32,8 @@ module.exports = function(grunt) {
 		}
 
 		if (arguments.length != 0) {
+			//overrride the activelocales with any arguments if they've been passed.
+			//this will allow for a user to grab just a specific locale if desired.
 			options.activeLocales = [arg];
 		}
 
@@ -47,11 +49,23 @@ module.exports = function(grunt) {
 		auth.request(function() {
 
 			//this only gets called when there was a success grabbing down an API key.
+
+			//transform the native google doc data into an array of json documents.
 			transformer.init({
-				documentId: options.documentId,
-				locales: locales
-			})
-			done(true);
+				grunt: grunt,
+				googleLib: google,
+				asyncCallback: done,
+				options: options
+			});
+			transformer.fetch(function(jsonDocuments) {
+
+				for(var i=0; i<jsonDocuments; j++) {
+					//write out the json document!
+				}
+
+				done(true);
+
+			});
 
 		});
 
