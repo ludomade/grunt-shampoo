@@ -58,6 +58,13 @@ module.exports = {
 
 	},
 
+	logout: function() {
+
+		this.config.google.tokens.accessToken = "";
+		this.writeShampooConfig();
+
+	},
+
 	testConfig: function() {
 
 		//test off your configuration file (if it exists)
@@ -116,7 +123,9 @@ module.exports = {
 				access_token: this.config.google.tokens.accessToken,
 				refresh_token: this.config.google.tokens.refreshToken
 			});
+
 			callBack();
+
 
 		} else {
 
@@ -129,7 +138,7 @@ module.exports = {
 
 					//reset the tokens in the shampoo file.
 					self.config.google.tokens.accessToken = "";
-					self.config.google.tokens.refreshToken = "";
+					//self.config.google.tokens.refreshToken = "";
 
 				} else {
 
@@ -140,8 +149,8 @@ module.exports = {
 
 					self.oauth2Client.setCredentials(tokens);
 				}
-
-				self.grunt.file.write(".shampoo", JSON.stringify(self.config, undefined, 4));
+				
+				this.writeShampooConfig();
 
 				if(err) {
 
@@ -158,6 +167,12 @@ module.exports = {
 			});
 
 		}
+
+	},
+
+	writeShampooConfig: function() {
+
+		this.grunt.file.write(".shampoo", JSON.stringify(this.config, undefined, 4));
 
 	}
 

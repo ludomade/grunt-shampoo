@@ -29,6 +29,12 @@ module.exports = {
 				
 				//if an error occurred stop execution.
 				self.grunt.log.error("Sorry, an error occurred grabbing this shampoo document access this shampoo document. Google chucked the error:" + JSON.stringify(err) );
+				if(typeof err.code != "undefined") {
+					if(err.code === 401) {
+						self.grunt.log.error("If you know for sure you have access to this document, please run the task again and we'll try your credentials again.");
+						self.auth.logout();
+					}
+				}
 				self.taskCallback(false);
 
 			} else {

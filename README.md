@@ -26,10 +26,8 @@ In your project's Gruntfile, add a section named `shampoo` to the data object pa
 grunt.initConfig({
   shampoo: {
     options: {
-      // Task-specific options go here.
-    },
-    your_target: {
-      // Target-specific file lists and/or options go here.
+      documentId: "" //Your shampoo document ID (grab this from the shampoo URL),
+      activeLocales: []
     },
   },
 });
@@ -37,53 +35,36 @@ grunt.initConfig({
 
 ### Options
 
-#### options.separator
+#### options.documentId
 Type: `String`
-Default value: `',  '`
+Default value: ``
 
-A string value that is used to do something with whatever.
+The document ID which you want to pull data down from.  To find your document ID, open your shampoo document in the browser.  The document ID is displayed in the URL, after /#/edit/.  For example: /#/edit/{documentId}.
 
-#### options.punctuation
-Type: `String`
-Default value: `'.'`
+#### options.activeLocales
+Type: `Array<String>`
+Default value: ``
 
-A string value that is used to do something else with whatever else.
+Enter an array of strings of locales you wish to pull down.  Ie, ['en-US', 'en-GB', 'en-AU'].  The locale codes must match the code setup within shampoo.
 
 ### Usage Examples
 
 #### Default Options
-In this example, the default options are used to do something with whatever. So if the `testing` file has the content `Testing` and the `123` file had the content `1 2 3`, the generated result would be `Testing, 1 2 3.`
+In this example, shampoo will grab the document with the ID of 0B0DrlaR4h0bLYjlxaF9ZNzZuZEU, and pull down the en-US and fr-FR locales when invoked via `grunt shampoo`.
 
 ```js
 grunt.initConfig({
   shampoo: {
-    options: {},
-    files: {
-      'dest/default_options': ['src/testing', 'src/123'],
-    },
+    documentId: "0B0DrlaR4h0bLYjlxaF9ZNzZuZEU",
+    activeLocales: ["en-US", "fr-FR"]
   },
 });
 ```
 
-#### Custom Options
-In this example, custom options are used to do something else with whatever else. So if the `testing` file has the content `Testing` and the `123` file had the content `1 2 3`, the generated result in this case would be `Testing: 1 2 3 !!!`
+### Task arguments
 
-```js
-grunt.initConfig({
-  shampoo: {
-    options: {
-      separator: ': ',
-      punctuation: ' !!!',
-    },
-    files: {
-      'dest/default_options': ['src/testing', 'src/123'],
-    },
-  },
-});
-```
+If you want to pull down only a specific locale, pass in the locale code as an argument to the shampoo task to pull down just that specific locale.
 
-## Contributing
-In lieu of a formal styleguide, take care to maintain the existing coding style. Add unit tests for any new or changed functionality. Lint and test your code using [Grunt](http://gruntjs.com/).
+For example:
 
-## Release History
-_(Nothing yet)_
+`grunt shampoo:es-MX` would pull down just the es-MX locale.  The list of locales setup in the activeLocales options set in the grunt initConfig object will be ignored.
