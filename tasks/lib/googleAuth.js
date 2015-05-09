@@ -116,7 +116,7 @@ module.exports = {
 		this.oauth2Client = new OAuth2(this.config.google.clientId, this.config.google.clientSecret, this.config.google.redirectUrl);
 		this.googleLib.options({ auth: this.oauth2Client });
 
-		if(this.config.google.tokens.accessToken.length) {
+		if(this.config.google.tokens.refreshToken.length && this.config.google.tokens.accessToken.length) {
 
 			//if we've saved down the access token in the .shampoo file
 			this.oauth2Client.setCredentials({
@@ -124,7 +124,33 @@ module.exports = {
 				refresh_token: this.config.google.tokens.refreshToken
 			});
 
-			callBack();
+			this.oauth2Client.refreshAccessToken(function(err, tokens) {
+
+				// your access_token is now refreshed and stored in oauth2Client 
+				var error = false;
+
+			  	if(tokens == null) {
+
+			  		self.grunt.log.error("Shampoo error: There was an error contacting the google auth.  We couldn't refresh your access token.  Sorry.  Please Try again." + JSON.stringify(err));
+			  		self.taskCallback(false);
+
+			  	} else {
+
+			  		self.config.google.tokens.accessToken = tokens.access_token;
+			  		if(typeof tokens.refresh_token != "undefined") {
+			  			if(tokens.refresh_token != self.config.refreshToken) {
+			  				self.config.google.tokens.refreshToken = tokens.refresh_token;
+			  			}
+			  			self.config.google.tokens.accessToken = tokens.access_token;
+			  		}
+			  		self.writeShampooConfig();
+
+			  		callBack();
+
+			  	}
+			});
+
+			
 
 
 		} else {
@@ -145,12 +171,14 @@ module.exports = {
 					//write the auth token and refresh token out to the .shampoo file
 					self.grunt.log.writeln("Got your google access token, thanks.  Saving it down to your .shampoo file.")
 					self.config.google.tokens.accessToken = tokens.access_token;
-					self.config.google.tokens.refreshToken = tokens.refresh_token;
+					if(typeof tokens.refresh_token != "undefined") {
+						self.config.google.tokens.refreshToken = tokens.refresh_token;
+					}
 
 					self.oauth2Client.setCredentials(tokens);
 				}
 				
-				this.writeShampooConfig();
+				self.writeShampooConfig();
 
 				if(err) {
 

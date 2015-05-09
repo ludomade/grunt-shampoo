@@ -17,6 +17,13 @@ Once the plugin has been installed, it may be enabled inside your Gruntfile with
 grunt.loadNpmTasks('shampoo');
 ```
 
+## The private configuration.
+This plugin requires a file named ".shampoo" that lives in the same directory as your gruntfile.  Copy the provided .shampoo.example, and rename it to .shampoo.
+Fill in the google client id and google client secret that's provided in the shampoo configuration located in the [google developer console](https://console.developers.google.com/project)
+If you have no idea what these items are, contact a shampoo developer who can provide you with a valid .shampoo file.
+
+IMPORTANT - always include .shampoo in your .gitignore.  This file is never meant to be passed around.
+
 ## The "shampoo" task
 
 ### Overview
