@@ -41,7 +41,8 @@ module.exports = {
 		var self = this;
 		var url = this.oauth2Client.generateAuthUrl({
 			access_type: 'offline', // 'online' (default) or 'offline' (gets refresh_token) 
-			scope: this.config.google.scopes // If you only need one scope you can pass it as string
+			scope: this.config.google.scopes, // If you only need one scope you can pass it as string
+			approval_prompt: 'force' // re-prompt the user for consent in order to obtain another refresh token.
 		});
 
 		this.grunt.log.writeln('We\'ve opened a browser window. Please authorize the google permissions request to connect to shampoo.');
