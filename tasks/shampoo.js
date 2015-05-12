@@ -19,6 +19,12 @@ module.exports = function(grunt) {
 		//lets set this task as async.
 		var done = this.async();
 
+		if(!grunt.file.exists(".shampoo")) {
+			grunt.log.error("No .shampoo configuration file was found.  Please create one.  See the readme (https://github.com/ludomade/grunt-shampoo/tree/shampoo3) for more info.");
+			done(false);
+			return;
+		}
+
 		// Merge task-specific and/or target-specific options with these defaults.
 		var options = this.options({
 			documentId: "",
