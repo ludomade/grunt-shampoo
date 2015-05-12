@@ -46,7 +46,7 @@ module.exports = {
 
 		this.grunt.log.writeln('We\'ve opened a browser window. Please authorize the google permissions request to connect to shampoo.');
 		open(url);
-		inquirer.prompt([{name: "oauthCode", message:"After authorized, enter the code supplied from your browser."}], function(response) {
+		inquirer.prompt([{name: "oauthCode", message:"After authorized, enter the code supplied from your browser:\n"}], function(response) {
 
 			//self.grunt.log.write("here's the response given" + response.oauthCode);
 			//callback(false);
