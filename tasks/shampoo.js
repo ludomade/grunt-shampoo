@@ -1,8 +1,8 @@
 /*
- * shampoo
- * http://shampoo.io
+ * grunt-shampoo
+ * https://github.com/ludomade/grunt-shampoo
  *
- * Copyright (c) 2015 George Huber
+ * Copyright (c) 2015 Ludomade
  * Licensed under the MIT license.
  */
 

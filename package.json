@@ -1,24 +1,24 @@
 {
-  "name": "grunt-shampoo3",
-  "description": "A grunt plugin to grab the data down from Ludomade's shampoo app.",
-  "version": "0.0.1",
+  "name": "grunt-shampoo",
+  "description": "A grunt plugin to retrieve data from Ludomade's Shampoo app.",
+  "version": "3.0.0",
   "homepage": "http://shampoo.io",
   "author": {
     "name": "George Huber",
     "email": "huber@ludomade.com",
-    "url": "http://www.ludomade.com"
+    "url": "http://www.ludomade.com/"
   },
   "repository": {
     "type": "git",
-    "url": "git@github.com:ludomade/grunt-shampoo3.git"
+    "url": "git@github.com:ludomade/grunt-shampoo.git"
   },
   "bugs": {
-    "url": "https://github.com/ludomade/grunt-shampoo3/issues"
+    "url": "https://github.com/ludomade/grunt-shampoo/issues"
   },
   "licenses": [
     {
       "type": "MIT",
-      "url": "https://github.com/ludomade/grunt-shampoo3/blob/master/LICENSE-MIT"
+      "url": "https://github.com/ludomade/grunt-shampoo/blob/master/LICENSE-MIT"
     }
   ],
   "engines": {
