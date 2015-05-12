@@ -12,7 +12,7 @@ module.exports = {
 		google: {
 			clientId: "",
 			clientSecret: "", //this should be set by the .shampoo file overrides.
-			redirectUrl: "http://dev.shampoo.ludomade.net/oauth2callback",
+			redirectUrl: "http://shampoo.io/oauth2callback",
 			scopes: [
 				"https://www.googleapis.com/auth/drive.file"
 			],
