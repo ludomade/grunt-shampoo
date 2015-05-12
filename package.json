@@ -1,0 +1,47 @@
+{
+  "name": "grunt-shampoo3",
+  "description": "A grunt plugin to grab the data down from Ludomade's shampoo app.",
+  "version": "0.0.1",
+  "homepage": "http://shampoo.io",
+  "author": {
+    "name": "George Huber",
+    "email": "huber@ludomade.com",
+    "url": "http://www.ludomade.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:ludomade/grunt-shampoo3.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ludomade/grunt-shampoo3/issues"
+  },
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "https://github.com/ludomade/grunt-shampoo3/blob/master/LICENSE-MIT"
+    }
+  ],
+  "engines": {
+    "node": ">= 0.8.0"
+  },
+  "scripts": {
+    "test": "grunt test"
+  },
+  "devDependencies": {
+    "grunt-contrib-jshint": "^0.9.2",
+    "grunt-contrib-clean": "^0.5.0",
+    "grunt-contrib-nodeunit": "^0.3.3",
+    "grunt": "~0.4.5"
+  },
+  "peerDependencies": {
+    "grunt": "~0.4.5"
+  },
+  "keywords": [
+    "gruntplugin"
+  ],
+  "dependencies": {
+    "googleapis": "~2.0.3",
+    "inquirer": "~0.8.3",
+    "open": "0.0.5"
+  }
+}
