@@ -1,7 +1,7 @@
 {
   "name": "grunt-shampoo",
   "description": "A grunt plugin to retrieve data from Ludomade's Shampoo app.",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "homepage": "http://shampoo.io",
   "author": {
     "name": "George Huber",

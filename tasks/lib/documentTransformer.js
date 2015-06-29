@@ -5,10 +5,12 @@ module.exports = {
 	googleLib: null,
 	taskCallback: null,
 	options: null,
+	localesLookup: null,
 
 	init: function(params) {
 			
 		this.jsonDocuments = null;
+		this.localesLookup = {};
 		this.grunt = params.grunt;
 		this.googleLib = params.googleLib;
 		this.taskCallback = params.taskCallback;
@@ -49,10 +51,26 @@ module.exports = {
 
 	},
 
+	buildLocalesLookup: function(locales) {
+
+		for(var i=0; i<locales.length; i++) {
+			var locale = locales[i];
+			this.localesLookup[locale.id] = locale.value.code.value;
+		}
+
+	},
+
 	parseDocument: function(jsonDoc) {
+
+		if(jsonDoc.data == null) {
+			this.grunt.log.error("There is no data in this document, or your access to it is insufficient.");
+			return;
+		}
 
 		var documentLocales = jsonDoc.data.value.locales.value;
 		var nodes = jsonDoc.data.value.nodes.value;
+
+		this.buildLocalesLookup(documentLocales);
 
 		//cruise through all the locales we're wishing to grab.
 		for(var i=0; i<this.options.activeLocales.length; i++) {
@@ -116,8 +134,31 @@ module.exports = {
 						
 						//these are the array_object_group's
 						var objectGroup = childrenObjectGroups[j].value;
-						var objectGroupData = this.getJsonObj(objectGroup.children.value, localeCode);
-						returnObj[child.name.value].push(objectGroupData);
+						var doRenderItem = true;
+
+						if(typeof objectGroup.disabledChildrenLocales != "undefined") {
+							//disabledChildrenLocales is a list of google node id's - not locale codes.
+							//loop through all the items, and check if the current localeCode is present in that list.
+							//if so, skip the rendering of this item.
+
+							if(objectGroup.disabledChildrenLocales.value.length > 0) {
+								for(var k=0; k<objectGroup.disabledChildrenLocales.value.length; k++) {
+
+									var localeId = objectGroup.disabledChildrenLocales.value[k].json;
+									if(this.localesLookup[localeId] === localeCode) {
+										doRenderItem = false;
+									}
+
+								}
+							}
+						}
+
+						if(doRenderItem) {
+							
+							var objectGroupData = this.getJsonObj(objectGroup.children.value, localeCode);
+							returnObj[child.name.value].push(objectGroupData);
+
+						}
 
 					}
 
