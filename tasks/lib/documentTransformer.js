@@ -6,6 +6,7 @@ module.exports = {
 	taskCallback: null,
 	options: null,
 	localesLookup: null,
+	defaultLocale: null,
 
 	init: function(params) {
 			
@@ -71,6 +72,11 @@ module.exports = {
 		var nodes = jsonDoc.data.value.nodes.value;
 
 		this.buildLocalesLookup(documentLocales);
+		var hasDefaultLocale = this.setDefaultLocale(documentLocales);
+		if(!hasDefaultLocale) {
+			this.grunt.log.error("There is no default locale setup for this document.  Please open the document and it'll auto set one for you.  Then try this task again.");
+			return;	
+		}
 
 		//cruise through all the locales we're wishing to grab.
 		for(var i=0; i<this.options.activeLocales.length; i++) {
@@ -88,7 +94,7 @@ module.exports = {
 			//if it exists, append a json object to the jsonDocuments array.
 			if(localeExists) {
 
-				var obj = this.getJsonObj(nodes, requestedLocale);
+				var obj = this.getJsonObj(nodes, requestedLocale, false);
 				this.jsonDocuments.push({
 					locale: requestedLocale,
 					data: obj
@@ -105,7 +111,7 @@ module.exports = {
 
 	},
 
-	getJsonObj: function(nodes, localeCode) {
+	getJsonObj: function(nodes, localeCode, hasParentUsedDefaultLocaleData) {
 
 		var array = nodes;
 		var returnObj = {};
@@ -114,8 +120,17 @@ module.exports = {
 		for(var i=0; i<array.length; i++) {
 			
 			var child = array[i].value;
+			var useDefaultLocaleData = false;
 
-			///
+			if(this.hasNodeExcludedLocalization(child)) {
+				useDefaultLocaleData = true;
+			}
+
+			var childLocaleCode = localeCode;
+			if(useDefaultLocaleData) {
+				childLocaleCode = this.defaultLocale.value.code.value;
+				hasParentUsedDefaultLocaleData = true;
+			}
 
 			if(child.controlType.value === "array_objects") {
 
@@ -135,6 +150,8 @@ module.exports = {
 						//these are the array_object_group's
 						var objectGroup = childrenObjectGroups[j].value;
 						var doRenderItem = true;
+						var groupLocaleCode = childLocaleCode;
+						var doRenderChildrenAsDefault = hasParentUsedDefaultLocaleData;
 
 						if(typeof objectGroup.disabledChildrenLocales != "undefined") {
 							//disabledChildrenLocales is a list of google node id's - not locale codes.
@@ -153,9 +170,20 @@ module.exports = {
 							}
 						}
 
+						if(this.hasNodeExcludedLocalization(objectGroup)) {
+							//useDefaultLocaleData = true;
+							groupLocaleCode = this.defaultLocale.value.code.value;
+							doRenderChildrenAsDefault = true;
+						}
+
+						if(useDefaultLocaleData || doRenderChildrenAsDefault) {
+							//if we're default to the default locale's data (global data) then we should render this item.
+							doRenderItem = true;
+						}
+
 						if(doRenderItem) {
 							
-							var objectGroupData = this.getJsonObj(objectGroup.children.value, localeCode);
+							var objectGroupData = this.getJsonObj(objectGroup.children.value, groupLocaleCode, doRenderChildrenAsDefault);
 							returnObj[child.name.value].push(objectGroupData);
 
 						}
@@ -173,10 +201,9 @@ module.exports = {
 					if(child.val.value != null) {
 												
 						//if we're rendering a single locale.
-						//var itemVal = child.val.value.get(localeCode);
 						var itemVal = null;
-						if(typeof child.val.value[localeCode] != "undefined") {
-							itemVal = child.val.value[localeCode].json
+						if(typeof child.val.value[childLocaleCode] != "undefined") {
+							itemVal = child.val.value[childLocaleCode].json
 						}
 
 						if(child.children.value.length) {
@@ -193,7 +220,7 @@ module.exports = {
 					if(child.children.value.length) {
 
 						//if this node has children, let's loop recursively and grab all its child data.
-						var grandChildObj = this.getJsonObj(child.children.value, localeCode);
+						var grandChildObj = this.getJsonObj(child.children.value, childLocaleCode, hasParentUsedDefaultLocaleData);
 						
 						for(var key in grandChildObj) {
 							returnObj[child.name.value][key] = grandChildObj[key];
@@ -208,6 +235,39 @@ module.exports = {
 		}
 
 		return returnObj;
+
+	},
+
+	hasNodeExcludedLocalization: function(node) {
+
+		if(typeof node.options != "undefined") {
+			//if the node has the options key of 'isLocalizationExcluded' set to true.
+			//ignore the current locale for itself and its node, and use the default locale's data.
+
+			if(typeof node.options.value.isLocalizationExcluded != "undefined") {
+				if(node.options.value.isLocalizationExcluded.json) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+
+	},
+
+	setDefaultLocale: function(locales) {
+
+		for(var i=0; i<locales.length; i++) {
+			var locale = locales[i];
+			if(typeof locale.value.options != "undefined") {
+				var val = locale.value.options.value.isDefault.json;
+				if(val) {
+					this.defaultLocale = locale;
+					return true;
+				}
+			}
+		}
+		return false;
 
 	}
 
