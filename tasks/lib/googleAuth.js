@@ -12,7 +12,7 @@ module.exports = {
 		google: {
 			clientId: "",
 			clientSecret: "", //this should be set by the .shampoo file overrides.
-			redirectUrl: "http://shampoo.io/oauth2callback",
+			redirectUrl: "http://shampoo.ludomade.com/oauth2callback",
 			scopes: [
 				"https://www.googleapis.com/auth/drive.file"
 			],
@@ -34,13 +34,13 @@ module.exports = {
 		this.testConfig();
 
 	},
-	
+
 	getAccessToken: function(callback) {
-		
+
 		// generate consent page url
 		var self = this;
 		var url = this.oauth2Client.generateAuthUrl({
-			access_type: 'offline', // 'online' (default) or 'offline' (gets refresh_token) 
+			access_type: 'offline', // 'online' (default) or 'offline' (gets refresh_token)
 			scope: this.config.google.scopes, // If you only need one scope you can pass it as string
 			approval_prompt: 'force' // re-prompt the user for consent in order to obtain another refresh token.
 		});
@@ -74,7 +74,7 @@ module.exports = {
 			var jsonOpts = this.grunt.file.readJSON(".shampoo");
 
 			if(typeof jsonOpts.google != "undefined") {
-				
+
 				if(typeof jsonOpts.google.clientId != "undefined") {
 					this.config.google.clientId = jsonOpts.google.clientId;
 				}
@@ -113,7 +113,7 @@ module.exports = {
 
 		var self = this;
 		var OAuth2 = this.googleLib.auth.OAuth2;
-		
+
 		this.oauth2Client = new OAuth2(this.config.google.clientId, this.config.google.clientSecret, this.config.google.redirectUrl);
 		this.googleLib.options({ auth: this.oauth2Client });
 
@@ -127,7 +127,7 @@ module.exports = {
 
 			this.oauth2Client.refreshAccessToken(function(err, tokens) {
 
-				// your access_token is now refreshed and stored in oauth2Client 
+				// your access_token is now refreshed and stored in oauth2Client
 				var error = false;
 
 			  	if(tokens == null) {
@@ -151,7 +151,7 @@ module.exports = {
 			  	}
 			});
 
-			
+
 
 
 		} else {
@@ -160,7 +160,7 @@ module.exports = {
 			this.getAccessToken(function(err,tokens) {
 
 				if(err) {
-					
+
 					self.grunt.log.error("Shampoo error: There was an error contacting the google auth.  Try again.");
 
 					//reset the tokens in the shampoo file.
@@ -178,7 +178,7 @@ module.exports = {
 
 					self.oauth2Client.setCredentials(tokens);
 				}
-				
+
 				self.writeShampooConfig();
 
 				if(err) {
